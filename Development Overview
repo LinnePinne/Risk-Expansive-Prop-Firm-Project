@@ -1,0 +1,173 @@
+Tanken med detta projekt är att bygga flera strategier med mer volatil edge än vänliga portfölj kompatibla strategier för futures prop firms. Fututes prop firms har ofta billigare challenges med 
+ett-stegs validering istället för två-stegs, och samtidigt mer passande regler för att sikta på att klara konton snabbare fast med lägre pass rate. Idén är alltså att vi ska låta varje strategi
+köra på varsitt konto. Om vi till exempel har fyra okorrelerade strategier som alla har en average pass time på 30 dagar och en payout rate på över 50% (alltså sannolikheten att nå en payout) där 
+average payout är minst dubbelt så stor som kontokostnaden så täcks utgifterna av payous samtidgt som det blir en vinst. Därför kan vi skala upp till fler och fler konton och strategier och
+expansivt köpa större och större konton. Vi kommer troligtvis börja med 25k konton som kostar runt 100-200 dollar beroende på prop firm. Första steget är att börja undersöka och bygga den första 
+strategin. Vi kommer behöva betala för data för intradagsdata med OHLCV för futures
+
+Eftersom målet är funded-skalning med automatiserad intradagshandel vill vi inte bygga en strategi som bara fungerar på ett instrument. Vi vill bygga en strategifamilj som kan köras på flera 
+likvida futures med liknande mikrostruktur, men med tillräckligt låg korrelation för att inte alla konton dör samtidigt. Vi börjar med micro futures, inte minis eftersom 25k-konton kräver exakt
+riskkontroll och vi behöver kunna skala kontrakt mjukt.
+| Prioritet | Marknad                      | Symbol                                          | Varför                                                           |
+| --------: | ---------------------------- | ----------------------------------------------- | ---------------------------------------------------------------- |
+|         1 | Micro Nasdaq                 | **MNQ**                                         | Hög range, mycket intradagsedge, bra för momentum/mean reversion |
+|         2 | Micro S&P 500                | **MES**                                         | Mest stabil benchmark, ofta renare än MNQ                        |
+|         3 | Micro Russell 2000           | **M2K**                                         | Mer mean-reversion/regime-edge, annorlunda än ES/NQ              |
+|         4 | Micro Gold                   | **MGC**                                         | Bra diversifiering från index, ofta tydliga session-rörelser     |
+|         5 | Micro WTI Oil                | **MCL**                                         | Stark intradagsstruktur, men mer nyhets-/inventory-risk          |
+|         6 | Micro Treasury/Yield futures | **10Y/5Y yield futures eller micro treasuries** | Bra diversifiering, men annan logik än index                     |
+CME:s Micro E-mini-kontrakt är byggda som mindre versioner av de stora equity-indexfutures, och Micro E-mini S&P 500 är $5 × indexet med 0,25 punkt tick size, vilket gör MES lämplig för finare 
+riskjustering på små konton. Micro WTI är 100 fat per kontrakt, Micro Gold är 10 troy ounces, och CME:s yield futures har konstant $10 per basis point, vilket gör dem användbara för mindre, mer 
+kontrollerad exponering i råolja, guld och räntor.
+Exempel på första marknadskorg hade varit:
+MNQ + MES + M2K + MGC
+Sedan lägger vi till MCL först när ni byggt robust news-filter och event-risk-filter. 
+
+Strategiidéer att börja undersöka
+Vi ska inte börja med en enda “perfekt” strategi. Bättre att bygga 3–5 små edges som kan kombineras, där varje edge har egen entrylogik men samma riskmotor.
+
+1. Opening range breakout med regimfilter
+Grundidé:
+Definiera opening range efter cash open, till exempel första 5, 15 eller 30 minuterna.
+- Tradea breakout endast om:
+ - premarket range är komprimerad,
+ - volym/volatilitet expanderar,
+ - pris bryter i riktning med högre tidsram,
+ - market breadth eller korrelerade index bekräftar.
+Marknader:
+| Bäst     | Okej | Undvik först               |
+| -------- | ---- | -------------------------- |
+| MNQ, MES | M2K  | MCL, MGC utan separat test |
+Varför den passar funded:
+Den kan ha kort holding time, tydlig invalidation och bra R-multiplar. Men den måste ha filter, annars blir den lätt övertradad.
+Testvarianter:
+| Variant    | Entry                             | Exit                              |
+| ---------- | --------------------------------- | --------------------------------- |
+| ORB 5      | Break av första 5 min range       | Fixed R eller VWAP-trail          |
+| ORB 15     | Break av första 15 min range      | Time exit före lunch              |
+| Failed ORB | Fake breakout tillbaka in i range | Mean reversion till VWAP/midrange |
+
+2. VWAP mean reversion efter stretch
+Det här är en mycket bra kandidat för flera marknader, eftersom VWAP fungerar som institutionell intradagsreferens.
+Grundidé:
+Tradea inte varje touch av VWAP. Vänta på stretch:
+- pris är X ATR eller X standardavvikelser från VWAP,
+- rörelsen börjar tappa momentum,
+- volymen avtar eller absorption syns,
+- entry tas på återtag av kort triggernivå,
+- target är VWAP, half-back eller föregående balansnivå.
+| Bäst | Kommentar                                      |
+| ---- | ---------------------------------------------- |
+| MES  | Renast mean reversion                          |
+| M2K  | Ofta bra reversion, men stökigare              |
+| MNQ  | Bra men mer explosiv, kräver bredare stop      |
+| MGC  | Fungerar ibland väldigt bra under rätt session |
+Exempel på regler:
+| Komponent | Exempel                             |
+| --------- | ----------------------------------- |
+| Setup     | Pris > 2σ över VWAP                 |
+| Trigger   | Lower high + break av micro swing   |
+| Stop      | Ovan extrem + volatilitetspåslag    |
+| Target 1  | VWAP band 1                         |
+| Target 2  | VWAP eller session midpoint         |
+| Filter    | Undvik trenddagar med stark breadth |
+Det viktiga här är att ha ett trenddag-filter, annars shortar vi starka dagar hela vägen upp.
+
+3. Pullback continuation i trendregim
+Det här är motsatsen till VWAP mean reversion och behövs för att portföljen inte ska bli beroende av chop.
+Grundidé:
+Identifiera trendregim:
+- pris över/under VWAP,
+- högre highs/lows,
+- positiv/negativ slope på VWAP eller EMA,
+- expansion i range och volym.
+Entry tas på pullback till:
+- VWAP,
+- EMA-band,
+- prior breakout level,
+- opening range high/low,
+- föregående balans.
+Marknader:
+| Bäst | Kommentar                   |
+| ---- | --------------------------- |
+| MNQ  | Starka intradagstrender     |
+| MES  | Renare men lägre range      |
+| MGC  | Bra under makrodrivna dagar |
+| MCL  | Bra, men event-risk         |
+Den här strategin är viktig eftersom funded-konton ofta dör när man bara kör mean reversion i en trenddag.
+
+4. Session transition strategy
+Detta är en av de mest underskattade idéerna för automation.
+Grundidé:
+Olika sessioner har olika beteende:
+- Asien session
+- London open
+- USA premarket
+- US cash open
+- lunch
+- power hour
+Vi bygger separata modeller för specifika fönster istället för att låta boten handla hela dagen.
+Exempel:
+| Tidsfönster            | Hypotes                               |
+| ---------------------- | ------------------------------------- |
+| 08:00–10:00 svensk tid | Europa sätter riktning i index/metals |
+| 14:30–16:00 svensk tid | US open expansion                     |
+| 16:00–18:00 svensk tid | Reversion/lunch chop                  |
+| 20:00–21:45 svensk tid | Power hour continuation/reversal      |
+För svensk tid är detta extra praktiskt eftersom US cash open normalt blir 15:30 svensk tid under perioder när USA och Sverige båda ligger i sommartid/vintertid, men det finns 
+några veckor per år när DST-skillnader gör att tiderna skiftar. Där måste backtestet använda exchange timezone, inte hårdkodad svensk tid. 
+Marknader:
+| Session       | Marknader     |
+| ------------- | ------------- |
+| London/Europa | MGC, MES, MNQ |
+| US open       | MNQ, MES, M2K |
+| Power hour    | MNQ, MES      |
+| Energi-events | MCL           |
+
+
+Strategier vi inte borde börja med:
+| Strategityp                          | Varför                                                                                  |
+| ------------------------------------ | --------------------------------------------------------------------------------------- |
+| Ren scalping på 1–3 ticks            | Prop firms kan ogilla latency/fill-exploitation och det blir känsligt för fees/slippage |
+| HFT/orderbook-spoof-liknande logik   | Compliance-risk                                                                         |
+| Nyhetstrading direkt på CPI/FOMC/NFP | För hög tail-risk och ofta förbjudet/begränsat                                          |
+| Martingale/grid                      | Dåligt för funded drawdown                                                              |
+| All-in trendföljning utan daily stop | Kan se bra ut i backtest men döda konton snabbt                                         |
+För detta projekt vill vi hellre ha färre trades, tydligare invalidation, robust execution och låg compliance-risk.
+
+Valideringsplan
+Steg 1: Hypotestest
+För varje setup ska vi kunna skriva:
+“Den här strategin tjänar pengar när X marknadsbeteende uppstår, och förlorar när Y händer.”
+Exempel:
+ORB tjänar pengar när första expansionen efter US open leder till fortsatt orderflöde. Den förlorar när breakout absorberas och pris återgår in i range. Om vi inte kan beskriva varför 
+den ska fungera, bygg den inte.
+
+Steg 2: Robust backtest
+Testa på:
+| Del                         | Krav                                       |
+| --------------------------- | ------------------------------------------ |
+| Minst 3–5 års intradagsdata | Helst tick/minutdata                       |
+| Out-of-sample               | Minst 25–35% av perioden                   |
+| Slippage + commissions      | Måste inkluderas                           |
+| Sessionfilter               | Separat per tidsfönster                    |
+| Nyhetsfilter                | CPI, FOMC, NFP, Fed speakers, EIA för olja |
+| Contract roll               | Korrekt hanterat                           |
+| DST                         | Exchange-timezone, inte lokal hårdkodning  |
+
+Steg 3: Prop-firm Monte Carlo
+När backtestet är klart ska ni inte bara fråga:
+“Är strategin lönsam?”
+Utan:
+“Hur ofta når den payout innan drawdown breach?”
+För varje marknad och modul vill vi mäta:
+| Mätvärde                          | Varför                          |
+| --------------------------------- | ------------------------------- |
+| Probability of first payout       | Er primära funded KPI           |
+| Expected payouts per account      | Viktigaste scaling-siffran      |
+| Median time to payout             | Planering av pipeline           |
+| Probability of ruin before payout | Kostnadsmodell                  |
+| Max intraday drawdown             | Avgör om Rapid är farligt       |
+| Longest losing streak             | Avgör pauser/filter             |
+| Trade frequency                   | Prop compliance + stabilitet    |
+| Tail days                         | Risk för flera konton samtidigt |
