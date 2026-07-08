@@ -156,7 +156,7 @@ Testa på:
 | DST                         | Exchange-timezone, inte lokal hårdkodning  |
 
 Steg 3: Prop-firm Monte Carlo
-När backtestet är klart ska ni inte bara fråga:
+När backtestet är klart ska vi inte bara fråga:
 “Är strategin lönsam?”
 Utan:
 “Hur ofta når den payout innan drawdown breach?”
@@ -171,3 +171,10 @@ För varje marknad och modul vill vi mäta:
 | Longest losing streak             | Avgör pauser/filter             |
 | Trade frequency                   | Prop compliance + stabilitet    |
 | Tail days                         | Risk för flera konton samtidigt |
+
+Vi börjar först att köpa data från databento. Första strategin vi ska
+testa är en Opening range breakout strategi som troligtvis fungerar
+bäst på MNQ och MES. Först köper vi 3-5 års data för de marknaderna och 
+kanske fler, vi kommer ju ändå köpa data för fler marknader i framtiden.
+När vi ser lovande edge och att strategin visar potential i en marknad 
+köper vi mer data, både tick data men också för en längre period.
