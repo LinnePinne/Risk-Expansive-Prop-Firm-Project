@@ -1,0 +1,111 @@
+Opening Range Breakout
+US Cash Open ORB Continuation på MNQ och MES
+Strategin ska försöka fånga fortsatt prisexpansion när den första prisupptäckten efter den amerikanska cash open leder till bestående orderflöde. Den preliminära hypotesen är:
+När MNQ eller MES etablerar en opening range efter 09:30 New York-tid och därefter bryter ut med tillräcklig styrka, fortsätter priset oftare än slumpmässigt i breakout-riktningen
+innan den amerikanska lunchperioden. Edgen försvagas när öppningen är obalanserat volatil, saknar fortsatt deltagande eller breakout snabbt absorberas.
+Detta är en rimlig strukturell hypotes eftersom cash open innebär:
+kraftigt ökad likviditet och volym,
+ompositionering efter overnight-sessionen,
+institutionella order och ETF-/aktieflöden,
+informationsbearbetning efter amerikanska makrosläpp,
+prisupptäckt mellan futuresmarknaden och cash index.
+
+Preliminär Strategy 1 Specification v0.1
+Marknader
+Primär: MNQ
+Sekundär och cross-market-validering: MES
+Samma grundregler på båda marknaderna. Ingen separat parameteroptimering per marknad i första utvecklingsfasen. M2K och MGC hålls helt utanför tills MNQ/MES-hypotesen är färdigutvärderad.
+MNQ bör sannolikt ge högre payoff och snabbare prop-firm-resultat, medan MES är den stabilare kontrollmarknaden. Om strategin endast fungerar på MNQ måste vi undersöka om det är en 
+verklig Nasdaq-specifik edge eller resultatet av överanpassning.
+
+Session
+Alla tider definieras i America/New_York, inte svensk tid.
+Cash open: 09:30 ET
+Opening range: preliminärt 09:30–09:45 ET
+Entryfönster: efter 09:45 och fram till exempelvis 11:00 ET
+Inga nya positioner efter entryfönstrets slut
+Alla positioner stängs intraday
+Exchange-tidszon och DST ska hanteras direkt i datan och koden.
+
+Opening range
+Baseline:
+OR_high = högsta pris mellan 09:30 och 09:44:59
+OR_low = lägsta pris under samma period
+OR_width = OR_high - OR_low
+Nivåerna fryses efter 09:45 och får inte förändras senare
+Vi börjar med 15 minuter som central specifikation. Fem minuter är betydligt känsligare för mikrostruktur och slippage, medan 30 minuter ger färre möjligheter och riskerar att fånga en 
+rörelse som redan är långt utvecklad. Vi kan senare använda 5 och 30 minuter som fördefinierade känslighetstester, men inte välja den variant som råkar ge bäst historiskt resultat.
+
+Entry
+Första rena baseline-varianten:
+
+Long
+En avslutad 1-minutsbar stänger över OR_high.
+Entry sker vid nästa bars open.
+Endast den första kvalificerade breakouten används.
+
+Short
+En avslutad 1-minutsbar stänger under OR_low.
+Entry sker vid nästa bars open.
+Endast den första kvalificerade breakouten används.
+
+Detta är bättre att börja med än en stop-order exakt på rangegränsen. En touch-baserad modell blir mycket känsligare för tickdata, köposition, spread och intra-bar-antaganden. Vi bör 
+inte lägga till EMA, VWAP, volym, overnight-trend och market-breadth i baseline. Först måste vi veta hur den råa ORB-effekten ser ut.
+
+Antal trades
+Maximalt en entry per marknad och dag.
+Ingen omedelbar reversal efter ett misslyckat breakout.
+Ingen pyramidering.
+MNQ och MES testas först som separata strategiserier.
+Detta begränsar risken för att en stökig öppning producerar flera förluster och gör resultatet enklare att tolka.
+
+Initial stop
+För baseline föreslås:
+Long: stop vid OR_low
+Short: stop vid OR_high
+Positionen dimensioneras så att avståndet till stoppen motsvarar en bestämd kontorisk.
+Ingen flytt av stop innan en separat exitstudie genomförs.
+En full opening-range-stop är strukturellt tydlig: strategins hypotes är bruten när priset går igenom hela öppningsbalansen. Nackdelen är att stoppen ibland blir mycket bred. Därför
+behöver vi senare undersöka ett range-width-filter och ett maximalt tillåtet stopavstånd.
+
+Exitstruktur
+Vi börjar med två fördefinierade exitmodeller:
+
+Fixed-R baseline
+Stop: motsatt sida av opening range
+Target: 2R
+Time exit: exempelvis 15:55 ET
+
+Uncapped continuation
+Samma initiala stop
+Ingen fast target
+Tidsbaserad exit före sessionens slut
+Eventuell enkel trailingregel testas först senare
+
+Fixed 2R ger en lättolkad baseline. Den andra modellen visar om strategins verkliga värde ligger i ett fåtal stora trenddagar. Vi bör inte lägga till partial exits i första versionen 
+eftersom de skapar flera extra frihetsgrader.
+
+Första fördefinierade forskningsfrågorna
+När baseline är byggd ska vi undersöka följande i denna ordning:
+Finns rå ORB-edge efter realistiska kostnader?
+Fungerar samma princip på både MNQ och MES?
+Är long och short båda lönsamma?
+Kommer resultatet från några få extrema trenddagar?
+Hur påverkas resultatet av opening-rangens relativa storlek?
+Vilka breakouts fortsätter och vilka absorberas?
+Tillför volymexpansion ett stabilt filter?
+Tillför overnight-/premarket-regim eller VWAP-position verklig OOS-information?
+Hjälper bekräftelse mellan MNQ och MES?
+Hur omvandlas strategins tradefördelning till sannolikheten att nå payout före drawdown breach?
+
+Viktig avgränsning
+Vi ska inte från början bygga något i stil med:
+ORB 15 + EMA-filter + VWAP-slope + overnight-gap + relativ volym + breadth + news-filter + dynamisk target.
+En sådan strategi kan ge ett snyggt backtest utan att vi vet vilken komponent som faktiskt bär edgen. Vi börjar med rå ORB och lägger sedan till en komponent åt gången genom en 
+fördefinierad forskningsordning.
+
+Vi preliminärt låser:
+Strategi 1 = 15-minute US Cash Open ORB Continuation, testad med identiska grundregler på MNQ och MES, 1-minutsdata, next-bar entry, en trade per marknad och dag samt full opening-range-stop.
+
+Nästa diskussion bör handla om entry- och exitarkitekturen: framför allt om 2R-target ska vara huvudbaseline, eller om en ORB-strategi för detta projekt bör konstrueras för att behålla de 
+sällsynta stora trenddagarna.
