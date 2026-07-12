@@ -585,3 +585,604 @@ Contract-cap statistics:
            20                     5             0.005862                         14
            25                     1             0.001172                          1
            30                     0             0.000000                          0
+
+
+
+ORB_MNQ_MES_PHASE1B_IS_EXIT_RETEST_V1.0
+Market: MES
+IS ONLY: 2021-07-14 through 2024-12-31 inclusive
+OOS analyzed: False
+Variants: TARGET_2R vs NO_TARGET
+Bootstrap: simulations=20000 block_size=20
+
+--- TARGET_2R ---
+Trades: 848
+End balance: $26,551.25
+Net profit: $1,551.25
+Return: 6.20%
+CAGR: 1.75%
+Win rate: 40.33%
+Expectancy R: 0.019067
+R-based PF: 1.033680
+USD PF: 1.005915
+Sharpe corrected daily: 0.224589
+Sortino corrected daily: 0.375577
+Max realized daily DD: 55.26%
+Positive years: 2/4
+Contracts avg/p95/max: 7.41/14.00/28
+Exit counts: {'STOP': 467, 'TARGET': 213, 'TIME': 168}
+Block bootstrap mean R 95%: [-0.054525, 0.095198] P(meanR>0)=0.6855
+Block bootstrap R-PF 95%: [0.908795, 1.177461] P(PF>1)=0.6855
+Annual results:
+ year  trades  wins  losses  win_rate      sum_r  expectancy_r  r_profit_factor  net_pnl_usd  usd_profit_factor  average_contracts  max_contracts
+ 2021     112    53      59  0.473214  13.836320      0.123539         1.265275      6172.50           1.215837           8.080357             17
+ 2022     247   106     141  0.429150  20.103838      0.081392         1.148268     10660.75           1.143823           5.036437             16
+ 2023     244    92     152  0.377049  -6.520055     -0.026722         0.954769     -6600.50           0.925431           9.299180             22
+ 2024     245    91     154  0.371429 -11.251523     -0.045925         0.924063     -8681.50           0.877729           7.600000             28
+Exit contribution:
+exit_reason  trades  trade_share  wins  win_rate       sum_r  share_of_total_net_r  expectancy_r  r_profit_factor  net_pnl_usd  usd_profit_factor  average_bars_held  average_contracts
+       STOP     467     0.550708     0  0.000000 -467.000000            -28.883181     -1.000000         0.000000   -255158.00           0.000000          94.269807           7.685225
+     TARGET     213     0.251179   213  1.000000  399.795918             24.726719      1.876976              inf    212860.50                inf         163.863850           7.727700
+       TIME     168     0.198113   129  0.767857   83.372662              5.156462      0.496266         7.378983     43848.75           7.192452         354.970238           6.220238
+Contract-cap statistics:
+ contract_cap  trades_exceeding_cap  share_exceeding_cap  contracts_above_cap_total
+            5                   560             0.660377                       2345
+           10                   147             0.173349                        469
+           15                    19             0.022406                         67
+           20                     4             0.004717                         12
+           25                     1             0.001179                          3
+           30                     0             0.000000                          0
+
+--- NO_TARGET ---
+Trades: 848
+End balance: $38,028.25
+Net profit: $13,028.25
+Return: 52.11%
+CAGR: 12.86%
+Win rate: 38.09%
+Expectancy R: 0.046412
+R-based PF: 1.079134
+USD PF: 1.032769
+Sharpe corrected daily: 0.481896
+Sortino corrected daily: 0.954347
+Max realized daily DD: 55.09%
+Positive years: 2/4
+Contracts avg/p95/max: 10.97/21.65/45
+Exit counts: {'STOP': 482, 'TIME': 366}
+Block bootstrap mean R 95%: [-0.041373, 0.137786] P(meanR>0)=0.8445
+Block bootstrap R-PF 95%: [0.932865, 1.247337] P(PF>1)=0.8445
+Annual results:
+ year  trades  wins  losses  win_rate      sum_r  expectancy_r  r_profit_factor  net_pnl_usd  usd_profit_factor  average_contracts  max_contracts
+ 2021     112    51      61  0.455357  11.114991      0.099241         1.205231      4720.00           1.158846           8.169643             17
+ 2022     247   103     144  0.417004  42.310587      0.171298         1.306665     30525.50           1.307172           6.825911             24
+ 2023     244    88     156  0.360656  -1.130057     -0.004631         0.992361     -6145.25           0.958909          15.397541             36
+ 2024     245    81     164  0.330612 -12.938129     -0.052809         0.917741    -16072.00           0.864864          12.024490             45
+Exit contribution:
+exit_reason  trades  trade_share  wins  win_rate       sum_r  share_of_total_net_r  expectancy_r  r_profit_factor  net_pnl_usd  usd_profit_factor  average_bars_held  average_contracts
+       STOP     482     0.568396     0  0.000000 -482.000000            -12.246746     -1.000000         0.000000   -385011.75           0.000000          98.958506          11.522822
+       TIME     366     0.431604   323  0.882514  521.357392             13.246746      1.424474        34.958422    398040.00          32.685407         357.071038          10.245902
+Contract-cap statistics:
+ contract_cap  trades_exceeding_cap  share_exceeding_cap  contracts_above_cap_total
+            5                   689             0.812500                       5196
+           10                   399             0.470519                       2365
+           15                   171             0.201651                        848
+           20                    54             0.063679                        266
+           25                    15             0.017689                         90
+           30                     8             0.009434                         35
+
+IS-resultatet ger ett tillräckligt tydligt beslut:
+Vi låser NO_TARGET som exitkandidat inför OOS. MNQ går vidare som primär marknad. MES följer med som sekundär extern validering, men är fortfarande inte godkänd. Det är inte en överlägsen
+seger för no-target på MNQ, men den förbättrar den normaliserade edgen på båda marknaderna och är den enklare exitarkitekturen.
+MNQ
+| Mätvärde                       |          2R |    No target | Fördel         |
+| ------------------------------ | ----------: | -----------: | -------------- |
+| Expectancy                     |    +0,0860R | **+0,0959R** | No target      |
+| R-PF                           |       1,171 |    **1,182** | No target      |
+| Sharpe                         |   **1,108** |        1,051 | 2R             |
+| Sortino                        |       1,926 |    **2,089** | No target      |
+| Max DD                         | **23,59 %** |      25,26 % | 2R             |
+| Positiva år                    |         4/4 |          4/4 | Lika           |
+| Bootstrap (P(\text{mean R}>0)) | **99,87 %** |      99,67 % | Praktiskt lika |
+No-target förbättrar expectancy med cirka 11 %:
+(0,08603 / 0,09585) − 1 ≈ 11,4%
+Men skillnaden är liten i relation till bootstrapintervallen, vilka överlappar kraftigt. Vi kan därför inte säga att no-target är statistiskt bevisat bättre. Däremot:
+no-target har högre expectancy,
+högre R-PF,
+högre korrigerad Sortino,
+är positivt under samtliga fyra IS-perioder,
+är den enklare exitmodellen,
+låter de största trenddagarna fortsätta utan ett godtyckligt 2R-tak.
+Nackdelen är något lägre Sharpe och 1,67 procentenheter högre realiserad drawdown.
+Årsvis MNQ
+| År          |           2R |    No target |
+| ----------- | -----------: | -----------: |
+| 2021, delår |     +0,2060R | **+0,2119R** |
+| 2022        |     +0,0727R | **+0,1232R** |
+| 2023        |     +0,0298R | **+0,0324R** |
+| 2024        | **+0,0991R** |     +0,0770R |
+No-target förbättrar tre av fyra perioder. Resultatet kommer främst från en stor förbättring under 2022, medan 2R fungerar bättre under 2024. Det tyder på att no-target gynnas av starkare 
+trend-/expansionsmiljöer, vilket stämmer med strategins hypotes.
+MES
+| Mätvärde                       |       2R |    No target |
+| ------------------------------ | -------: | -----------: |
+| Expectancy                     | +0,0191R | **+0,0464R** |
+| R-PF                           |    1,034 |    **1,079** |
+| Sharpe                         |    0,225 |    **0,482** |
+| Sortino                        |    0,376 |    **0,954** |
+| Max DD                         |  55,26 % |  **55,09 %** |
+| Positiva år                    |      2/4 |          2/4 |
+| Bootstrap (P(\text{mean R}>0)) |  68,55 % |  **84,45 %** |
+No-target förbättrar MES mer än MNQ, men MES är fortfarande inte robust:
+bootstrapintervallet är fortfarande negativt i nedre delen,
+2023 och 2024 är negativa,
+R-PF är bara 1,079,
+drawdown ligger kvar runt 55 %,
+USD-PF är bara 1,033.
+No-target räddar alltså inte MES. Marknaden får följa med till OOS eftersom den är värdefull som extern kontroll, men ett positivt MES-OOS får inte användas för att i efterhand bortförklara det 
+svaga IS-resultatet.
+
+Exitmekanismen
+MNQ no-target:
+422 stops: −422R
+431 time exits: +503,76R
+Netto: +81,76R
+Time-exit-trades:
+win rate 82,60 %,
+expectancy +1,169R,
+R-PF 20,17.
+
+MES no-target
+482 stops: −482R
+366 time exits: +521,36R
+Netto: +39,36R
+
+No-target skapar en tydligare asymmetrisk profil:
+förlusten är begränsad till ungefär −1R,
+vinnarna får fortsätta fram till 15:55,
+ingen fast target begränsar de bästa trenddagarna.
+Detta passar bättre med en continuation-ORB än att på förhand anta att exakt 2R är den naturliga slutpunkten.
+
+Contract-cap-statistiken
+No-target visar fler och större kontraktspositioner eftersom equity växer snabbare under IS. Det betyder inte att själva stopavståndet är större.
+MNQ no-target:
+genomsnitt 7,17 kontrakt,
+95:e percentilen 14,4,
+maximum 26,
+18,5 % av tradesen över 10 kontrakt.
+
+MES no-target:
+genomsnitt 10,97,
+95:e percentilen 21,65,
+maximum 45,
+47,1 % över 10 kontrakt.
+
+Dollarresultaten kan därför inte översättas direkt till ett specifikt 25k-propkonto. Contract cap ska appliceras rekursivt senare, tillsammans med prop-firm-reglerna. R-resultatet är 
+fortfarande det primära beslutsmåttet nu.
+
+
+Vi låser följande kandidat inför OOS:
+Strategy: US Cash Open ORB Continuation
+Markets:
+  Primary: MNQ
+  Secondary validation: MES
+
+Opening range: 09:30–09:44 ET
+Signal window: 09:45–10:59 ET
+Entry: next 1-minute bar open
+Last entry: 11:00 ET
+Maximum entries: 1 per market/day
+Stop: opposite opening-range boundary
+Profit target: NONE
+Time exit: 15:55 bar open
+Risk: maximum 2% all-in
+Fee: $2.00 round turn per contract
+Slippage entry/stop/target/time: 1/1/0/1 ticks
+Same-bar rule: stop first
+
+Nästa kodversion ska:
+endast köra NO_TARGET,
+analysera 2025-01-01–2026-07-09,
+inte skriva ut 2R-resultatet,
+använda exakt samma signal-, sizing- och kostnadsregler,
+redovisa samma mått som Fas 1B.
+
+Fördefinierad bedömning:
+OOS pass: expectancy > 0 och R-PF > 1.
+Stark pass: dessutom positiv stabilitet över delperioderna och hög bootstrapandel över noll.
+Villkorad pass: totalperioden är positiv men en årsperiod är negativ eller resultatet är koncentrerat.
+Fail: expectancy ≤ 0 eller R-PF ≤ 1.
+
+MES är inte ett krav för att MNQ ska passera, men ett positivt MES-resultat skulle stärka den generella hypotesen.
+
+Om no-target misslyckas OOS får vi inte efteråt öppna 2R-resultatet på samma OOS och välja det i stället. Då skulle OOS bli en ny optimeringsperiod. I så fall behöver 2R valideras på ett annat, fortfarande orört dataset.
+Nästa steg är därför en Fas 1C candidate-locked OOS-kodversion för NO_TARGET.
+ORB_MNQ_MES_PHASE1C_OOS_NO_TARGET_V1.0
+Market: MNQ
+Market role: PRIMARY
+Candidate: NO_TARGET (LOCKED)
+Candidate lock SHA256: 2d99d086b045cf2fba9a8f226ab335a5002a5056e554761ec2e137560a7b26b6
+OOS ONLY: 2025-01-01 through 2026-07-09 inclusive
+IS analyzed: False
+2R alternative analyzed: False
+Bootstrap: simulations=20000 block_size=20
+
+OOS GATE CLASSIFICATION: CONDITIONAL_PASS
+Gate: Expectancy R > 0: 0.037832
+Gate: R-based PF > 1: 1.078276
+Gate: Positive annual periods: 1/2
+Gate: Circular-block P(mean R > 0): 0.7109 (below 0.90 strong-pass threshold)
+
+Trades: 371
+End balance: $28,446.50
+Net profit: $3,446.50
+Return: 13.79%
+CAGR: 8.90%
+Win rate: 46.09%
+Expectancy R: 0.037832
+R-based PF: 1.078276
+USD PF: 1.035518
+Sharpe corrected daily: 0.422932
+Sortino corrected daily: 0.730863
+Max realized daily DD: 29.15%
+Positive annual periods: 1/2
+Contracts avg/p95/max: 2.46/5.00/7
+Exit counts: {'TIME': 201, 'STOP': 170}
+Block bootstrap mean R 95%: [-0.089045, 0.172150] P(meanR>0)=0.7109
+Block bootstrap R-PF 95%: [0.831742, 1.397693] P(PF>1)=0.7109
+
+Annual results:
+period  trades  wins  losses  win_rate     sum_r  expectancy_r  r_profit_factor  net_pnl_usd  usd_profit_factor  average_contracts  max_contracts
+  2025     243   112     131  0.460905 18.953628      0.077998         1.161985       7252.5           1.117793           2.695473              7
+  2026     128    59      69  0.460938 -4.918029     -0.038422         0.921060      -3806.0           0.892686           2.015625              5
+
+Quarterly results:
+period  trades  wins  losses  win_rate      sum_r  expectancy_r  r_profit_factor  net_pnl_usd  usd_profit_factor  average_contracts  max_contracts
+2025Q1      60    30      30  0.500000  19.896722      0.331612         1.755318       9588.0           1.895071           1.983333              4
+2025Q2      60    25      35  0.416667  -6.649626     -0.110827         0.804980      -4121.5           0.788646           2.800000              5
+2025Q3      63    33      30  0.523810   4.347952      0.069015         1.157564       1498.5           1.095840           3.460317              6
+2025Q4      60    24      36  0.400000   1.358580      0.022643         1.046890        287.5           1.018286           2.500000              7
+2026Q1      61    35      26  0.573770  11.233044      0.184148         1.517560       4492.0           1.341402           2.032787              4
+2026Q2      61    22      39  0.360656 -12.806059     -0.209935         0.651534      -7004.5           0.663237           2.098361              5
+2026Q3       6     2       4  0.333333  -3.345014     -0.557502         0.130606      -1293.5           0.142810           1.000000              1
+
+Exit contribution:
+exit_reason  trades  trade_share  wins  win_rate       sum_r  share_of_total_net_r  expectancy_r  r_profit_factor  net_pnl_usd  usd_profit_factor  average_bars_held  average_contracts
+       STOP     170     0.458221     0  0.000000 -170.000000            -12.112059       -1.0000         0.000000     -92182.0           0.000000          99.800000           2.600000
+       TIME     201     0.541779   171  0.850746  184.035598             13.112059        0.9156        20.768772      95628.5          20.700968         359.208955           2.343284
+
+Direction results:
+direction  trades  wins  win_rate     sum_r  expectancy_r  r_profit_factor  net_pnl_usd  usd_profit_factor  average_contracts
+     LONG     193    95  0.492228  4.011627      0.020786         1.044579       1342.5           1.027725           2.435233
+    SHORT     178    76  0.426966 10.023971      0.056314         1.112226       2104.0           1.043280           2.488764
+
+Contract-cap statistics:
+ contract_cap  trades_exceeding_cap  share_exceeding_cap  contracts_above_cap_total
+            5                     5             0.013477                          6
+           10                     0             0.000000                          0
+           15                     0             0.000000                          0
+           20                     0             0.000000                          0
+           25                     0             0.000000                          0
+           30                     0             0.000000                          0
+
+ORB_MNQ_MES_PHASE1C_OOS_NO_TARGET_V1.0
+Market: MES
+Market role: SECONDARY_VALIDATION
+Candidate: NO_TARGET (LOCKED)
+Candidate lock SHA256: 2d99d086b045cf2fba9a8f226ab335a5002a5056e554761ec2e137560a7b26b6
+OOS ONLY: 2025-01-01 through 2026-07-09 inclusive
+IS analyzed: False
+2R alternative analyzed: False
+Bootstrap: simulations=20000 block_size=20
+
+OOS GATE CLASSIFICATION: CONDITIONAL_PASS
+Gate: Expectancy R > 0: 0.032941
+Gate: R-based PF > 1: 1.060783
+Gate: Positive annual periods: 2/2
+Gate: Circular-block P(mean R > 0): 0.7081 (below 0.90 strong-pass threshold)
+
+Trades: 370
+End balance: $27,878.50
+Net profit: $2,878.50
+Return: 11.51%
+CAGR: 7.46%
+Win rate: 40.27%
+Expectancy R: 0.032941
+R-based PF: 1.060783
+USD PF: 1.027729
+Sharpe corrected daily: 0.370135
+Sortino corrected daily: 0.692385
+Max realized daily DD: 33.44%
+Positive annual periods: 2/2
+Contracts avg/p95/max: 5.44/11.00/15
+Exit counts: {'STOP': 195, 'TIME': 175}
+Block bootstrap mean R 95%: [-0.077483, 0.148619] P(meanR>0)=0.7081
+Block bootstrap R-PF 95%: [0.866725, 1.295668] P(PF>1)=0.7081
+
+Annual results:
+period  trades  wins  losses  win_rate    sum_r  expectancy_r  r_profit_factor  net_pnl_usd  usd_profit_factor  average_contracts  max_contracts
+  2025     245    95     150  0.387755 9.398723      0.038362         1.069453       2546.5           1.036360           5.889796             15
+  2026     125    54      71  0.432000 2.789302      0.022314         1.042786        332.0           1.009831           4.552000             10
+
+Quarterly results:
+period  trades  wins  losses  win_rate     sum_r  expectancy_r  r_profit_factor  net_pnl_usd  usd_profit_factor  average_contracts  max_contracts
+2025Q1      59    29      30  0.491525 16.929288      0.286937         1.618558      8377.00           1.626611           5.237288             15
+2025Q2      61    22      39  0.360656 -8.428963     -0.138180         0.769959     -5853.00           0.726483           5.557377             13
+2025Q3      63    22      41  0.349206 -1.749917     -0.027776         0.954953     -1464.25           0.926284           7.761905             12
+2025Q4      62    22      40  0.354839  2.648314      0.042715         1.081564      1486.75           1.096514           4.935484             12
+2026Q1      61    28      33  0.459016  3.871965      0.063475         1.132099      1681.50           1.111568           4.229508             10
+2026Q2      58    23      35  0.396552  0.449391      0.007748         1.013667      -537.25           0.968683           4.965517             10
+2026Q3       6     3       3  0.500000 -1.532054     -0.255342         0.489315      -812.25           0.474102           3.833333              5
+
+Exit contribution:
+exit_reason  trades  trade_share  wins  win_rate       sum_r  share_of_total_net_r  expectancy_r  r_profit_factor  net_pnl_usd  usd_profit_factor  average_bars_held  average_contracts
+       STOP     195     0.527027     0  0.000000 -195.000000            -15.999312     -1.000000         0.000000    -101018.0            0.00000          83.958974           5.738462
+       TIME     175     0.472973   149  0.851429  207.188024             16.999312      1.183932        38.549882     103896.5           38.25558         359.354286           5.102857
+
+Direction results:
+direction  trades  wins  win_rate     sum_r  expectancy_r  r_profit_factor  net_pnl_usd  usd_profit_factor  average_contracts
+     LONG     204    87  0.426471  0.579083      0.002839         1.005358       -674.5           0.987845           5.397059
+    SHORT     166    62  0.373494 11.608942      0.069933         1.125598       3553.0           1.073539           5.487952
+
+Contract-cap statistics:
+ contract_cap  trades_exceeding_cap  share_exceeding_cap  contracts_above_cap_total
+            5                   158             0.427027                        458
+           10                    20             0.054054                         34
+           15                     0             0.000000                          0
+           20                     0             0.000000                          0
+           25                     0             0.000000                          0
+           30                     0             0.000000                          0
+
+Slutligt Fas 1C-beslut
+| Marknad | Roll                | OOS-resultat         |
+| ------- | ------------------- | -------------------- |
+| MNQ     | Primär              | **CONDITIONAL_PASS** |
+| MES     | Sekundär validering | **CONDITIONAL_PASS** |
+Strategin överlever OOS och får fortsätta till nästa valideringsfas, men resultatet är inte tillräckligt starkt för deployment eller prop-simulering ännu. Det positiva är att den 
+låsta no-target-kandidaten är lönsam på båda marknaderna utan att 2R återöppnats. Det negativa är att edgen är tunn, osäkerhetsintervallen korsar noll och MNQ försvagas tydligt
+under 2026.
+MNQ: primär kandidat
+| Mätvärde    |       IS |      OOS | Förändring |
+| ----------- | -------: | -------: | ---------: |
+| Expectancy  | +0,0959R | +0,0378R |    −60,5 % |
+| R-PF        |    1,182 |    1,078 | Försämring |
+| Sharpe      |    1,051 |    0,423 | Försämring |
+| Max DD      |  25,26 % |  29,15 % | Försämring |
+| Positiva år |      4/4 |      1/2 | Försämring |
+MNQ klarar den primära gaten:
+expectancy är positiv,
+R-PF är över 1,
+371 trades ger ett meningsfullt OOS-underlag,
+både long och short är positiva,
+kontraktsstorleken är betydligt mer realistisk än under compounding-IS.
+
+Men den klarar inte strong-pass:
+block-bootstrapintervallet är −0,089R till +0,172R,
+sannolikheten för positiv expectancy är bara 71,1 %,
+2026 är negativt,
+2026 Q2 är tydligt dåligt med −0,210R per trade,
+de sex första tradesen i Q3 2026 är också negativa.
+
+MNQ per år
+| Period   | Expectancy |  R-PF |
+| -------- | ---------: | ----: |
+| 2025     |   +0,0780R | 1,162 |
+| 2026 YTD |   −0,0384R | 0,921 |
+Strategin valideras alltså av 2025, men inte av 2026. Totalt är den positiv, men vi kan inte hävda att edgen är stabil i den senaste regimen.
+Riktning
+| Riktning | Expectancy |  R-PF |
+| -------- | ---------: | ----: |
+| Long     |   +0,0208R | 1,045 |
+| Short    |   +0,0563R | 1,112 |
+Båda riktningarna är positiva, vilket är bra. Short är starkare, men vi får inte ta bort long efter att ha sett OOS-resultatet.
+MES: sekundär validering
+| Mätvärde   |       IS |      OOS |
+| ---------- | -------: | -------: |
+| Expectancy | +0,0464R | +0,0329R |
+| R-PF       |    1,079 |    1,061 |
+| Sharpe     |    0,482 |    0,370 |
+| Max DD     |  55,09 % |  33,44 % |
+MES-resultatet är svagt men förvånansvärt konsekvent med IS:
+expectancy försämras bara cirka 29 %,
+båda årsperioderna är positiva,
+R-PF förblir över 1,
+no-target-effekten överlever externt på den andra marknaden.
+Men bootstrapintervallet är −0,077R till +0,149R och sannolikheten för positiv expectancy är bara 70,8 %. MES är därför fortfarande för svagt för att godkännas som en självständig produktionsstrategi.
+
+MES per år
+| Period   | Expectancy |  R-PF |
+| -------- | ---------: | ----: |
+| 2025     |   +0,0384R | 1,069 |
+| 2026 YTD |   +0,0223R | 1,043 |
+2026 är tekniskt positivt, men USD-PF är bara 1,010 – praktiskt taget break-even efter compounding och kontraktsavrundning.
+Riktning
+| Riktning | Expectancy |  R-PF |
+| -------- | ---------: | ----: |
+| Long     |   +0,0028R | 1,005 |
+| Short    |   +0,0699R | 1,126 |
+MES-long saknar i praktiken OOS-edge. Vi får inte filtrera bort den på detta dataset, men observationen ska dokumenteras för framtida, genuint orörd data.
+
+Gemensamt regimmönster
+Båda marknaderna visar:
+mycket starkt 2025 Q1,
+negativt 2025 Q2,
+återhämtning eller stabilisering senare 2025,
+positivt 2026 Q1,
+tydlig försämring under 2026 Q2/Q3.
+Detta är ytterligare bevis för att MNQ och MES inte ger särskilt mycket diversifiering. De verkar vinna och förlora i liknande öppningsregimer.
+
+Vad OOS faktiskt har bekräftat
+OOS stödjer följande påståenden:
+No-target-arkitekturen har positiv expectancy även utanför IS.
+Effekten finns på både MNQ och MES.
+MNQ är fortfarande den starkare primärmarknaden.
+Strategin fungerar både long och short på MNQ.
+Edgen är regimberoende och betydligt svagare än IS-resultatet antydde.
+Resultatet är inte statistiskt tillräckligt säkert för produktion.
+Detta är ett legitimt men villkorat OOS-resultat – inte ett misslyckande, men inte heller ett robust godkännande.
+
+Vad vi inte får göra nu
+OOS är konsumerat. Vi får därför inte:
+testa 2R på 2025–2026,
+ta bort MNQ-long,
+ta bort MES-long och kalla förbättringen OOS,
+filtrera bort Q2,
+optimera entryfönstret,
+lägga till ett regimfilter baserat på dessa kvartal,
+välja nya parametrar och återanvända samma OOS som bekräftelse.
+
+Sådana förändringar skulle kräva ny, orörd data.
+
+Nästa steg bör vara bredare, men kontrollerad, IS-utvecklingsfas innan vi betraktar strategin som färdig. Fas 1C har bekräftat att den enkla no-target-baselinen har en möjlig edge, men 
+dess CONDITIONAL_PASS visar också att det finns skäl att fortsätta själva strategiforskningen. Det viktiga är hur vi gör det efter att OOS redan har konsumerats.
+
+Vad Fas 1C betyder
+No-target ska nu behandlas som vår referensmodell, inte automatiskt som slutlig strategi:
+REFERENCE_CANDIDATE = NO_TARGET_1555
+Vi kan fortsätta utveckla varianter på IS, men:
+2025–2026 får inte användas för att välja mellan dem.
+Resultaten från 2026 får inte användas för att konstruera ett filter.
+Vi får inte testa nya kandidater på 2025–2026 och välja den som ser bäst ut.
+Den nya slutkandidaten måste valideras på annan, ännu orörd data.
+
+Rekommenderad fortsatt utvecklingsstruktur
+Fas 1D – IS Diagnostics and Exit Lab
+Period:
+2021-07-14–2024-12-31
+Behåll exakt samma entries och analysera alternativa exits på samma entryhändelser. Då isolerar vi exitens bidrag utan att blanda in nya signalfilter. Fördefinierade exitfamiljer kan vara:
+NO_TARGET_1555 – nuvarande referens.
+ATR-baserad trailing stop.
+Break-even-flytt efter uppnådd R-nivå.
+Tidigare time exit.
+Eventuellt fast target som referens, men inte återöppnat på gamla OOS.
+Vi ska inte testa tjugo kombinationer. Varje exit måste ha en ekonomisk tanke.
+
+1. ATR-trailing
+En ATR-exit kan vara rimlig eftersom den:
+låter stora trenddagar fortsätta,
+anpassar avståndet efter aktuell volatilitet,
+kan låsa in vinster före 15:55,
+undviker ett godtyckligt fast target.
+
+Men definitionen måste vara helt kausal. Exempel:
+ATR beräknas endast på avslutade bars.
+Trailing aktiveras först efter att positionen nått exempelvis +1R.
+Long stop: max(initial stop, highest close since entry−k⋅ATR)
+Short stop: min(initial stop, lowest close since entry+k⋅ATR)
+
+En liten robusthetsfamilj kan exempelvis testa:
+ATR-period: en enda förvald period, exempelvis 14.
+Multiplikator: 2,0 / 2,5 / 3,0.
+Samma period och multiplikator på MNQ och MES.
+Ingen separat marknadsoptimering.
+
+Vi ska välja en stabil region, inte den bästa enskilda multiplikatorn.
+
+2. Break-even
+En separat exitfamilj:
+flytta stop till entry när priset når +1R,
+alternativt ingen break-even, nuvarande referens.
+Detta kan minska fulla −1R-förluster efter en initialt korrekt breakout, men riskerar att stoppa ut vinnande trenddagar. Därför ska det testas separat från ATR-trailing.
+
+3. Time exit
+Nuvarande 15:55 bör jämföras med ett mycket litet antal strukturellt motiverade tider, exempelvis:
+12:00: före lunchregimen,
+14:00: efter huvuddelen av sessionen,
+15:55: nuvarande heldagscontinuation.
+Vi ska inte testa varje halvtimme och välja bäst.
+
+Fas 1E – IS Regime and Entry Filters
+Först efter exitstudien bör vi undersöka vilka opening breakouts som faktiskt har bättre förutsättningar.
+
+1. Kausal MNQ/MES-confirmation
+Detta är högst prioriterat eftersom:
+det fanns i den ursprungliga hypotesen,
+MNQ och MES gav samma slutliga riktning 83 % av dagarna,
+båda var negativa när deras riktningar senare skilde sig. Men tidigare analys använde information från hela entryfönstret. Den får inte användas som filter direkt.
+En kausal version kan definieras som:
+Vid den avslutade signalbaren t måste den andra marknaden redan ha stängt utanför sin egen opening range i samma riktning. Entry sker tidigast vid t+1.
+Alternativt:
+Vänta tills båda marknaderna har bekräftat samma riktning och ta entry på nästa bar.
+Dessa är två olika regler och ska testas separat.
+
+2. Opening-range-regim
+Opening range bör normaliseras mot information som var känd före dagens entry:
+ORnormalized = dagens OR-width / median OR-width under föregående 20 sessioner
+eller: OR-width / föregående dags ATR
+​Hypoteser:
+extremt smal OR kan producera brusbreakouts,
+extremt bred OR kan innebära att expansionen redan är förbrukad,
+en normal eller måttligt komprimerad OR kan ge bäst continuation.
+Vi bör först redovisa expectancy per breda kvantiler och leta efter en ekonomiskt begriplig, monoton relation. Först därefter formuleras ett filter.
+
+3. Volymexpansion
+Exempelvis:
+relative breakout volume = signalbarens volymmedian / 1m-volym under opening range
+Hypotesen är att ett breakout med faktiskt deltagande har större sannolikhet att fortsätta än en prisrörelse utan volymexpansion. Även här ska vi söka bred stabilitet,
+inte optimera en exakt decimaltröskel.
+
+4. Overnight/premarket-regim
+Möjliga pre-entry-features:
+overnight range relativt tidigare volatilitet,
+cash-open gap,
+position relativt overnight high/low,
+overnight direction,
+premarket compression eller expansion.
+Dessa är strukturellt relevanta för ORB, men ska analyseras som separata features innan de kombineras.
+
+5. Högre tidsram och trendregim
+Möjliga definitioner:
+föregående dags riktning,
+pris relativt föregående dags close,
+flerbars trend på avslutade 30m/60m-bars,
+overnight VWAP-position,
+dagsvolatilitetsregim.
+Vi skulle undvika att direkt lägga till flera EMA-/ADX-filter. Det skapar lätt en vanlig indikatorstrategi utan tydlig koppling till cash-open-hypotesen.
+
+Ingen kombinatorisk grid
+Vi ska inte göra:
+3 ATR-perioder
+× 5 ATR-multiplikatorer
+× 4 time exits
+× 5 OR-filter
+× 4 volymfilter
+× 3 trendfilter
+Det skulle ge 3 600 varianter och nästan garanterat hitta ett falskt optimum.
+Arbetsordningen bör vara:
+Testa exitfamiljer isolerat.
+Lås en exitarkitektur på IS walk-forward.
+Testa ett filter åt gången.
+Kräv förbättring på både MNQ och MES eller en stark teoretisk förklaring till marknadsskillnaden.
+Kombinera maximalt ett eller två filter som visat självständig stabilitet.
+Kör slutkandidaten på ny, orörd data.
+
+Walk-forward inom IS
+Vi kan använda nuvarande IS för intern walk-forward:
+| Train           | Test |
+| --------------- | ---- |
+| 2021-07–2022-12 | 2023 |
+| 2021-07–2023-12 | 2024 |
+För varje parameterfamilj:
+Välj stabil parameterregion på train.
+Applicera oförändrat på nästa år.
+Samla endast testresultaten.
+Bedöm om samma princip fungerar i båda foldsen.
+Detta ger oss ett bättre skydd än att välja den variant som har högst totalresultat 2021–2024.
+
+Vad blir ny slutvalidering?
+Eftersom 2025–2026 är konsumerat kan nya varianter inte valideras där.
+Vi bör hålla följande data orörd:
+2019-05-06–2021-07-13
+Den används först när exit- och filterforskningen är färdig. Det blir en extern historisk robusthetsperiod, inte en ny optimeringsperiod. Därefter är data efter 9 juli
+2026 genuin forward OOS.
+
+Reviderad arbetsplan
+Fas 1D: IS Exit Lab.
+Fas 1E: IS regime- och featurediagnostik.
+Fas 1F: begränsade hypotesbaserade filtertester.
+Fas 1G: expanding walk-forward inom IS.
+Lås en ny slutkandidat.
+Fas 1H: orörd historisk validering 2019–2021.
+Execution- och kostnadsstress.
+Intraday MTM drawdown.
+Futures-prop Monte Carlo.
+Forward paper/live validation.
