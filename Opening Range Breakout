@@ -108,4 +108,398 @@ Vi preliminärt låser:
 Strategi 1 = 15-minute US Cash Open ORB Continuation, testad med identiska grundregler på MNQ och MES, 1-minutsdata, next-bar entry, en trade per marknad och dag samt full opening-range-stop.
 
 Nästa diskussion bör handla om entry- och exitarkitekturen: framför allt om 2R-target ska vara huvudbaseline, eller om en ORB-strategi för detta projekt bör konstrueras för att behålla de 
-sällsynta stora trenddagarna.
+sällsynta stora trenddagarna. Baseline strategin ser alltså ut såhär:
+
+Cash open: 09:30 ET
+Opening range: preliminärt 09:30–09:45 ET
+Entryfönster: efter 09:45 och fram till exempelvis 11:00 ET
+Inga nya positioner efter entryfönstrets slut
+Alla positioner stängs intraday
+
+Long entry när en avslutad 1-minutsbar stänger över OR_high. Short när en avslutad 1-minutsbar stänger under OR_low. Entry sker vid nästa bars open. Endast den första kvalificerade breakouten 
+används. För longs sätts stop loss till OR_low och för shorts vid OR_high och för targets testar vi först en variant med Fixed-r på exempelvis 2r och time exit på 15:55. Vi låser detta regelverk
+för första kodversionen:
+Marknader testas separat: MNQ och MES.
+Startbalans: $25 000 per backtest.
+Opening range: 09:30–09:44:59 ET.
+Första möjliga signalbar: 09:45.
+Longsignal: baren stänger strikt över OR_high.
+Shortsignal: baren stänger strikt under OR_low.
+Entry: nästa 1-minutsbars open, inklusive negativ slippage.
+Sista entry: 11:00-barens open.
+Sista möjliga signalbar blir därför 10:59.
+Maximalt en signal/entrymöjlighet per dag och marknad.
+Stop: motsatt sida av opening range.
+Target: 2R, beräknat från faktiskt entry-fill till stoppen.
+Time exit: 15:55-barens open.
+Riskbudget: 2 % av aktuell realiserad balans.
+Planerad stopförlust inklusive provision och antagen stop-slippage får aldrig överstiga riskbudgeten.
+Kontraktsantal avrundas nedåt till heltal.
+Noll kontrakt innebär ingen trade.
+Om både stop och target träffas inom samma 1-minutsbar räknas traden som stop loss.
+Alla positioner stängs intraday.
+
+Om next-bar open har gått tillbaka in i opening range tas entry ändå. Signalen baseras på föregående stängda bar.
+Om entry-fill hamnar på eller förbi stopnivån är traden ogiltig och hoppas över.
+Om next-bar saknas tas ingen entry.
+Den första signalen förbrukar dagens möjlighet även om traden hoppas över på grund av ogiltigt fill eller noll kontrakt.
+Halva handelsdagar exkluderas eftersom ordinarie 15:55-exit saknas.
+Vid saknade eller ogiltiga opening-range-bars handlas inte dagen.
+Stoppen fylls vid stopnivån plus antagen negativ stop-slippage.
+Target fylls vid targetnivån, med eventuell target-slippage som separat konfigurationsparameter.
+Time exit fylls vid 15:55 open plus negativ market-order-slippage.
+
+För kostnader i ett preliminärt konservativt första test kan vi använda:
+Entry: 1 tick negativ slippage
+Stop: 1 tick negativ slippage
+Target: 0 ticks
+Time exit: 1 tick negativ slippage
+Provision: Sätts till $2,00 per kontrakt round turn preliminärt och lämnas som tydlig konfigurationsparameter tills vi valt prop firm/broker.
+
+MNQ
+ORB_MNQ_MES_BASELINE_V1.0
+Rules: OR 09:30-09:44 | signals 09:45-10:59 | next-bar entry <=11:00 | 2R target | opposite-OR stop | 15:55-open exit | <=2% all-in risk
+Costs: $2.00 RT/contract | slippage ticks entry/stop/target/time=1/1/0/1
+Loading local data: databento_futures_1m\MNQ_1m_2021-07-14_2026-07-10.csv
+==============================================================================
+ORB_MNQ_MES_BASELINE_V1.0 — MNQ
+==============================================================================
+Start balance:                  $25,000.00
+End balance:                    $116,250.50
+Net profit:                     $91,250.50
+Total return:                   365.00%
+CAGR:                           36.10%
+Sessions observed:              1287
+Trades:                         1226
+Win rate:                       45.11%
+Profit factor:                  1.1130
+Expectancy/trade:               $74.43
+Expectancy/trade (net R):       0.0805
+Max losing streak:              8
+Max realized daily DD:          33.36%
+Daily Sharpe (annualized):      1.0567
+Max planned risk fraction:      1.9997%
+Ambiguous stop/target trades:   0
+Exit counts:                    {'STOP': 572, 'TIME': 421, 'TARGET': 233}
+Direction counts:               {'LONG': 628, 'SHORT': 598}
+Audit status counts:            {'TRADE': 1226, 'SKIP_NO_1555_BAR': 45, 'NO_SIGNAL': 16}
+==============================================================================
+Saved MNQ result files to: C:\Users\linus\PycharmProjects\ORB_Futures\results\ORB_MNQ_MES_BASELINE_V1.0\MNQ
+
+Det mest relevanta är inte slutbalansen eller CAGR, eftersom dessa förstoras kraftigt av 2 % compounding. De viktiga baseline-resultaten är:
+1 226 trades: mycket bra statistiskt underlag.
+Profit factor 1,113: positivt, men en ganska tunn edge.
+Expectancy 0,0805R per trade: positiv men modest.
+Max drawdown 33,36 %: alldeles för högt för ett verkligt prop-konto vid 2 % risk.
+Win rate 45,11 %: rimligt eftersom många trades stängs via time exit.
+233 targets, 572 stops och 421 time exits: time-exit-gruppen är en mycket viktig del av resultatet.
+Long/short är jämnt fördelade, vilket är bra för fortsatt analys.
+
+MNQ-baselinen visar en möjlig edge, men inte en stark eller bevisat robust edge.
+PF 1,113 ger ganska liten marginal mot:
+högre slippage,
+högre avgifter,
+kontraktsbegränsningar,
+svagare framtida marknadsförhållanden,
+enstaka implementationseffekter.
+CAGR 36,10 % ser stark ut, men är främst resultatet av att riskera nästan 2 % på ungefär 245 trades per år och återinvestera vinsten. Samma aggressiva
+sizing producerar också 33 % drawdown. Strategin är därför inte i närheten av prop-kompatibel i nuvarande risknivå. Det betyder inte att strategin är dålig.
+Position sizing och prop-regler analyseras senare. Just nu försöker vi endast avgöra om den underliggande ORB-logiken har en stabil positiv edge. 
+
+SKIP_NO_1555_BAR: 45
+Det är sannolikt amerikanska helgdagar och förkortade CME-sessioner där 15:55-baren inte existerar. Men vi behöver kontrollera datumen i daily_audit.csv. Det är 
+viktigt eftersom koden använder avsaknad av 15:55-baren för att exkludera hela dagen. Det är korrekt för fördefinierade early-close-dagar, men vi måste säkerställa 
+att inga vanliga handelsdagar har exkluderats på grund av datagap. 
+
+Nästa steg är att köra exakt samma körning på MES. Om samma ORB-logik är positiv även på MES stärks hypotesen tydligt. Om MES är neutral eller svagt negativ kan MNQ 
+fortfarande ha en Nasdaq-specifik edge. Om MES faller kraftigt samtidigt som MNQ bara har PF 1,113 måste vi vara försiktiga med att anta att detta är en generell 
+ORB-edge. Efter MES-körningen behöver vi analysera följande filer för båda marknaderna:
+summary.json
+annual_results.csv
+trades.csv
+daily_audit.csv
+Då kan vi kontrollera årsvis stabilitet, long/short, time-exit-resultat, kontraktsstorlekar, kostnadskänslighet, vinstkoncentration och de 45 exkluderade dagarna innan 
+vi beslutar om baseline-hypotesen överlever första fasen.
+MES
+ORB_MNQ_MES_BASELINE_V1.0
+Rules: OR 09:30-09:44 | signals 09:45-10:59 | next-bar entry <=11:00 | 2R target | opposite-OR stop | 15:55-open exit | <=2% all-in risk
+Costs: $2.00 RT/contract | slippage ticks entry/stop/target/time=1/1/0/1
+Loading local data: databento_futures_1m\MES_1m_2021-07-14_2026-07-10.csv
+
+==============================================================================
+ORB_MNQ_MES_BASELINE_V1.0 — MES
+==============================================================================
+Start balance:                  $25,000.00
+End balance:                    $32,622.25
+Net profit:                     $7,622.25
+Total return:                   30.49%
+CAGR:                           5.48%
+Sessions observed:              1287
+Trades:                         1218
+Win rate:                       40.89%
+Profit factor:                  1.0196
+Expectancy/trade:               $6.26
+Expectancy/trade (net R):       0.0253
+Max losing streak:              10
+Max realized daily DD:          55.26%
+Daily Sharpe (annualized):      0.3224
+Max planned risk fraction:      2.0000%
+Ambiguous stop/target trades:   0
+Exit counts:                    {'STOP': 656, 'TARGET': 291, 'TIME': 271}
+Direction counts:               {'LONG': 626, 'SHORT': 592}
+Audit status counts:            {'TRADE': 1218, 'SKIP_NO_1555_BAR': 45, 'NO_SIGNAL': 24}
+==============================================================================
+Saved MES result files to: C:\Users\linus\PycharmProjects\ORB_Futures\results\ORB_MNQ_MES_BASELINE_V1.0\MES
+
+MES-resultatet förändrar bedömningen tydligt. Den råa ORB-strategin är inte validerad som en generell MNQ/MES-strategifamilj.
+Jämförelse:
+| Mätvärde      |     MNQ |     MES |
+| ------------- | ------: | ------: |
+| Trades        |   1 226 |   1 218 |
+| Profit factor |   1,113 |   1,020 |
+| Expectancy    | 0,0805R | 0,0253R |
+| Sharpe        |   1,057 |   0,322 |
+| Max DD        | 33,36 % | 55,26 % |
+| CAGR          | 36,10 % |  5,48 % |
+| Targets       |     233 |     291 |
+| Stops         |     572 |     656 |
+| Time exits    |     421 |     271 |
+MES ligger praktiskt taget vid break-even efter våra kostnadsantaganden. PF 1,0196 och 0,0253R per trade är för svagt för att vi ska kunna skilja 
+en verklig edge från statistiskt brus utan ytterligare analys.
+
+Preliminär slutsats
+MNQ: överlever första baseline-testet som en kandidat, men edgen är tunn.
+MES: ger inget övertygande stöd för en robust edge.
+Gemensam MNQ/MES-strategifamilj: inte validerad i nuvarande form.
+2 % risk: klart för hög för båda marknaderna, men risknivån är inte det vi ska optimera ännu.
+
+Vi ska inte försöka förbättra MES genom att lägga till filter eller optimera parametrar. Det skulle vara klassisk resultatdriven utveckling.
+
+För båda marknaderna är target/stop-relationen svag:
+MNQ: 233 targets mot 572 stops.
+MES: 291 targets mot 656 stops.
+Med ungefär +2R för target och −1R för stop är den delen ensam sannolikt förlustbringande efter kostnader. Det betyder att time-exit-trades sannolikt 
+bär en stor del av lönsamheten. Det är viktigt eftersom hypotesen då kanske inte egentligen är:
+Breakout når ett fast 2R-target.
+Den kan snarare vara:
+En breakout efter cash open tenderar att ge positiv riktad drift under resten av sessionen, även när den inte når 2R.
+Detta måste verifieras från trade-loggen innan vi ändrar exitmodellen.
+
+Vi lät chatgpt göra en Fas 1 baseline-audit:
+MNQ-baselinen överlever Fas 1 som en seriös forskningskandidat. MES-baselinen gör det inte. Strategin är därför inte validerad som en gemensam MNQ/MES-familj i nuvarande form.
+
+Normaliserad jämförelse
+Dollarresultatet påverkas av compounding. För att bedöma själva strategiedgen är R-baserade mått viktigare.
+| Mätvärde                              |                     MNQ |                 MES |
+| ------------------------------------- | ----------------------: | ------------------: |
+| Trades                                |                   1 226 |               1 218 |
+| Genomsnittlig expectancy              |            **+0,0805R** |            +0,0253R |
+| R-baserad PF                          |               **1,163** |               1,046 |
+| Positiva årsperioder                  |              **5 av 6** |              3 av 6 |
+| Positiva månader                      |            **38 av 61** |            30 av 61 |
+| Positiva rullande 100-trade-fönster   |              **85,8 %** |              55,2 % |
+| Block-bootstrap 95 % intervall        | **+0,025 till +0,138R** | −0,036 till +0,086R |
+| Bootstrapandel med positiv expectancy |              **99,7 %** |              78,9 % |
+MNQ:s bootstrapintervall ligger helt över noll. MES intervallet korsar noll tydligt. Det betyder inte att MNQ garanterat har framtida edge, men skillnaden är för stor för att avfärda.
+Årsstabilitet
+| År          |     MNQ |     MES |
+| ----------- | ------: | ------: |
+| 2021, delår | +0,206R | +0,124R |
+| 2022        | +0,073R | +0,081R |
+| 2023        | +0,030R | −0,027R |
+| 2024        | +0,099R | −0,046R |
+| 2025        | +0,113R | +0,066R |
+| 2026, delår | −0,018R | −0,011R |
+MNQ är inte beroende av ett enda vinstår. Fyra skilda perioder visar en tydlig positiv edge, 2023 är svagt positivt och 2026 är hittills svagt negativt. MES visar däremot en strukturell 
+svaghetsperiod under 2023–2024 och har aldrig återhämtat sitt tidigare equity peak:
+MES peak: $42 830 den 22 december 2022.
+Trough: $19 164 den 21 augusti 2024.
+Drawdown: −55,26 %.
+Slutbalansen ligger fortfarande 23,8 % under tidigare peak.
+MNQ nådde däremot $174 454 den 4 mars 2026 och föll sedan till $116 250 den 9 juli 2026. Hela MNQ:s maximala drawdown på −33,36 % inträffar alltså i den senaste perioden. Det är en viktig 
+varningssignal trots det starka helhetsresultatet.
+
+Long och short
+MNQ är ovanligt symmetrisk:
+| Riktning | Trades | Expectancy |  R-PF |
+| -------- | -----: | ---------: | ----: |
+| Long     |    628 |   +0,0804R | 1,165 |
+| Short    |    598 |   +0,0807R | 1,161 |
+Det är positivt. Resultatet bärs inte av den långsiktiga aktiemarknadsdriften eller endast av longtrades. MES är också symmetrisk, men lika svag i båda riktningarna:
+Long: +0,0242R
+Short: +0,0265R
+MES-problemet kan alltså inte lösas genom att bara ta bort short eller long.
+Exitbidrag
+| Marknad | Exit   | Trades |  Genomsnitt | Totalt bidrag |
+| ------- | ------ | -----: | ----------: | ------------: |
+| MNQ     | Stop   |    572 |     −1,000R |       −572,0R |
+| MNQ     | Target |    233 |     +1,953R |       +455,0R |
+| MNQ     | Time   |    421 | **+0,512R** |   **+215,7R** |
+| MES     | Stop   |    656 |     −1,000R |       −656,0R |
+| MES     | Target |    291 |     +1,882R |       +547,6R |
+| MES     | Time   |    271 | **+0,514R** |   **+139,3R** |
+Target- och stoptrades är tillsammans negativa på båda marknaderna:
+MNQ: −117R
+MES: −108R
+Hela den positiva nettoexpectancyn kommer därför från de trades som överlever till 15:55. Detta betyder inte automatiskt att target ska tas bort. Time-exit-gruppen är en selekterad grupp
+som redan har undvikit både stop och target. Men resultatet ger starkt stöd för den exitstudie vi planerade från början:
+Jämför nuvarande 2R-target med samma strategi utan target och endast stop + 15:55-exit.
+Det är en fördefinierad hypotesstudie, inte efterhandsoptimering.
+
+Vinstkoncentration
+
+MNQ är relativt välfördelad:
+De tio bästa tradesen står för 20,1 % av totalt R-resultat.
+Efter att de tio bästa tas bort är expectancy fortfarande +0,0649R.
+85,8 % av alla rullande 100-trade-perioder är positiva.
+MES är betydligt skörare:
+De tio bästa tradesen står för 63,5 % av totalt R-resultat.
+Utan de tio bästa återstår endast +0,0093R per trade.
+Utan de 25 bästa blir expectancy negativ.
+Bara 55,2 % av rullande 100-trade-perioder är positiva.
+
+Det stärker slutsatsen att MES-resultatet sannolikt ligger nära brus.
+
+MNQ och MES är inte diversifiering
+På de 1 207 dagar då båda marknaderna handlade:
+Signalriktningen var samma 83,3 % av dagarna.
+R-korrelationen var 0,56.
+Båda förlorade samtidigt 552 dagar, 45,7 %.
+Båda träffade stop samtidigt 461 dagar, 38,2 %.
+De ska därför inte betraktas som två oberoende strategier eller två diversifierade konton. När deras slutliga dagsriktningar överensstämde var båda marknaderna klart positiva. När de inte 
+överensstämde var båda klart negativa. Det är intressant och stämmer med den ursprungliga hypotesen om bekräftelse mellan korrelerade index. Men vi får inte använda denna klassificering direkt,
+den bygger på vilken signal den andra marknaden slutligen gav senare under entryfönstret och kan därför innebära lookahead. Ett framtida confirmation-filter måste vara kausalt:
+Vid minut t får vi bara använda information från avslutade MNQ- och MES-bars fram till t, med entry tidigast på t+1.
+
+Kontraktsstorlek och prop-realism
+| Mått                    |  MNQ |  MES |
+| ----------------------- | ---: | ---: |
+| Genomsnittliga kontrakt | 7,31 | 7,28 |
+| Median                  |    7 |    7 |
+| 95:e percentilen        |   15 |   14 |
+| Maximum                 |   30 |   28 |
+| Trades med fler än 10   |  248 |  215 |
+Koden har ännu inget prop-firm contract cap. Beroende på vald firma kan en betydande del av tradesen därför vara omöjliga att genomföra. Detta påverkar främst dollarresultatet och 
+prop-simuleringen, inte den normaliserade R-edgen. MES betalade totalt $17 724 i avgifter men tjänade bara $7 622 netto. MES är därför mycket kostnadskänslig. MNQ betalade $17 920 och tjänade 
+$91 250 netto, vilket ger större kostnadsmarginal.
+
+De 45 exkluderade dagarna
+De 45 datumen är identiska för MNQ och MES och består av tydligt igenkännbara amerikanska helgdagar och förkortade sessioner:
+Labor Day
+Thanksgiving och Black Friday
+MLK Day
+Presidents Day
+Memorial Day
+Juneteenth
+3–4 juli
+Christmas Eve
+Jag ser inget uppenbart tecken på slumpmässiga datagap. På sikt bör koden ändå använda en explicit CME-handelskalender i stället för att identifiera early closes genom avsaknad av 15:55-baren.
+
+Två tekniska begränsningar
+Max realized daily DD är realiserad daglig drawdown, inte intraday MTM-drawdown.
+Sortino-beräkningen i v1.0 följer inte den standarddefinition vi bör använda. Sortino-värdena ska därför ignoreras tills beräkningen korrigerats.
+Testperioden slutar dessutom den 9 juli 2026. Databentos end="2026-07-10" är en exklusiv slutgräns.
+
+Rekommenderat nästa steg
+Frys denna baseline utan regeländringar. Nästa kodversion bör vara:
+Fas 1B – Exit Architecture Retest
+Testa exakt två fördefinierade varianter:
+Baseline: stop vid motsatt OR-sida, target 2R, time exit 15:55.
+Uncapped continuation: samma entry och stop, inget target, time exit 15:55.
+
+Allt annat ska vara identiskt:
+samma data,
+samma signaler,
+samma entry,
+samma risk,
+samma kostnader,
+separata MNQ/MES-resultat.
+
+Kodversionen bör samtidigt korrigera Sortino, redovisa R-baserad PF, contract-cap-statistik, exitbidrag, årsresultat och bootstrapintervall. Efter exitstudien kan vi testa ett separat, strikt
+kausalt MNQ/MES-confirmation-filter. Vi ska inte testa flera targetnivåer, entrytider eller indikatorfilter ännu. 
+
+Innan vi går in på nästa kodversion måste vi införa IS/OOS-disciplin. Att vänta tills vi har undersökt flera varianter skulle göra hela nuvarande datasetet mer och mer påverkat av våra beslut.
+Mer data ska senare förstärka valideringen, inte vara startpunkten för valideringsdisciplinen. Vi har redan sett:
+hela baseline-resultatet,
+årsresultaten,
+exitbidragen,
+signalperioderna,
+resultaten för 2025–2026.
+Därför kan vi inte längre kalla någon del av nuvarande data helt orörd OOS för den ursprungliga baseline-strategin. Däremot har vi ännu inte sett resultatet för den fördefinierade varianten
+utan target. Om vi låser processen nu kan vi fortfarande använda en kronologisk split för Fas 1B – Exit Architecture Retest utan att optimera mot OOS-resultatet.
+Rekommenderad split med nuvarande data
+| Del            | Period                | Användning                                      |
+| -------------- | --------------------- | ----------------------------------------------- |
+| IS/research    | 2021-07-14–2024-12-31 | Jämför 2R-target mot inget target               |
+| OOS/validation | 2025-01-01–2026-07-09 | Utvärdera den på förhand valda exitarkitekturen |
+Det ger ungefär 70 % IS och 30 % OOS, vilket passar kravet i Development Overview. OOS-perioden är inte helt orörd för baseline-resultatet, men resultatet för no-target-varianten är fortfarande 
+okänt. Den kan därför fortfarande fungera som en meningsfull valideringsperiod om vi följer rätt ordning.
+
+Rätt arbetsgång för Fas 1B
+
+Steg 1: Lås kandidaterna
+Endast:
+A: nuvarande 2R-target + 15:55-exit.
+B: inget target, samma stop + 15:55-exit.
+Inga andra targetnivåer, entrytider eller filter.
+
+Steg 2: Kör endast IS
+På IS jämför vi:
+expectancy i R,
+R-baserad PF,
+årsvis stabilitet,
+block-bootstrap,
+drawdown,
+resultat long/short,
+vinstkoncentration,
+kostnadskänslighet.
+Vi väljer en exitarkitektur endast från IS-resultatet. Om skillnaden är liten väljer vi den enklare eller behåller 2R-baselinen; vi väljer inte automatiskt den med högst backtestresultat.
+
+Steg 3: Frys beslutet
+Valet dokumenteras innan OOS-resultaten visas.
+
+Steg 4: Kör OOS en gång
+Den valda kandidaten måste åtminstone visa:
+positiv OOS-expectancy,
+R-PF över 1,
+ingen extrem koncentration,
+rimlig överensstämmelse med IS,
+ingen kollaps i både 2025 och 2026.
+Den kandidat som förlorar på IS ska inte få ”räddas” för att den råkar fungera bättre OOS. Då skulle OOS bli en andra optimeringsperiod.
+
+Walk-forward
+Vi behöver inte göra full parameteroptimerande walk-forward ännu. Strategin har fortfarande nästan inga fria parametrar och Fas 1B jämför bara två fördefinierade exitarkitekturer.
+Vi bör däremot lägga till en expanderande årsanalys:
+| Träningsdata | Nästa testperiod |
+| ------------ | ---------------- |
+| 2021-07–2022 | 2023             |
+| 2021-07–2023 | 2024             |
+| 2021-07–2024 | 2025             |
+| 2021-07–2025 | 2026             |
+I Fas 1B fungerar detta främst som en stabilitetskontroll. När vi senare börjar undersöka confirmation-filter, range-filter eller andra tröskelvärden blir riktig walk-forward obligatorisk:
+parametrar väljs på train och appliceras oförändrade på nästa testperiod.
+
+Skaffa mer data
+Vi kompletterar med MNQ/MES-data tillbaka till Micro-kontraktens start 2019, om Databento har hela perioden till rimlig kostnad. Då får vi:
+
+ytterligare cirka två år,
+pandemiperioden 2020,
+ett helt annat volatilitets- och likviditetsklimat,
+bättre möjlighet att bedöma regimstabilitet.
+
+Men vi måste bestämma användningen innan vi öppnar resultaten:
+använd 2019–2021 som separat historisk robusthetsperiod,
+använd den inte för att justera regler,
+behåll 2025–2026 som kronologisk forward-validation,
+data efter 9 juli 2026 blir framtida genuin OOS/paper-trading-data.
+
+Slutsats
+Vi ska alltså:
+1. Införa IS/OOS i nästa kodversion nu.
+2. Köra exitstudien på IS först.
+3. Låsa kandidat innan OOS visas.
+4. Använda yearly expanding walk-forward som stabilitetskontroll.
+5. Skaffa äldre data som ytterligare extern robusthetsperiod.
+6. Spara framtida data som genuin OOS.
+
+Nästa kodversion bör därför vara en Fas 1B IS-gated Exit Architecture Retest, där OOS-resultaten inte ens skrivs ut förrän vi har valt och låst kandidaten från IS.
