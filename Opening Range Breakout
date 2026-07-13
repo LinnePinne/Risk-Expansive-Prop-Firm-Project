@@ -1187,4 +1187,191 @@ Intraday MTM drawdown.
 Futures-prop Monte Carlo.
 Forward paper/live validation.
 
-Denna plan kan ändras under arbetets gång om så behövs. Nu är det dags att gå in i Fas 1D – IS Diagnostics and Exit Lab
+Denna plan kan ändras under arbetets gång om så behövs. Nu är det dags att gå in i Fas 1D – IS Diagnostics and Exit Lab. Vi lägger upp Fas 1D i fyra tydliga delsteg. Första 
+steget är diagnostik – inte parameteroptimering. 
+Datadelning
+Det tidigare IS delas internt:
+| Dataset             | Period                | Syfte                            |
+| ------------------- | --------------------- | -------------------------------- |
+| Development         | 2021-07-14–2022-12-31 | Konstruera och undersöka exits   |
+| Internal validation | 2023-01-01–2023-12-31 | Testa låsta exitregler           |
+| IS holdout          | 2024-01-01–2024-12-31 | Sluttest av högst två kandidater |
+2025–2026 är konsumerat OOS och får inte användas i Fas 1D.
+
+Fas 1D.1 – Fixed Entry Path Diagnostics
+Vi genererar först ett gemensamt entryregister. Entries ska beräknas en gång och återanvändas av alla framtida exitvarianter.
+Varje entryevent innehåller:
+marknad och datum,
+riktning,
+OR high, low och width,
+signal- och entrytid,
+entry open och fill,
+initial stop,
+initialt R-avstånd,
+hela minutspathen från entry till 15:55.
+Det gör att skillnader mellan kandidater endast kan komma från exitlogiken.
+
+Diagnostik per trade
+Vi beräknar:
+MFE i R,
+MAE i R,
+tid till MFE,
+tid till MAE,
+resultat vid 15:55,
+giveback:
+Giveback(R) = MFE(R) − Exit(R)
+om traden når +0,5R, +1R, +1,5R, +2R och +3R,
+vad traden slutligen ger efter att respektive nivå nåtts,
+hur många +1R- eller +2R-trades som senare blir förluster,
+när stops normalt inträffar.
+
+Tidscheckpoints
+Öppet R-resultat mäts vid:
+10:30
+11:00
+12:00
+13:00
+14:00
+15:00
+15:55
+Då ser vi om den riktade driften fortsätter under eftermiddagen eller om strategin systematiskt lämnar tillbaka vinster.
+
+Resultaten separeras efter:
+MNQ/MES,
+long/short,
+development/2023/2024,
+år,
+exitutfall,
+signalens tidpunkt.
+
+Fas 1D.1 ska bara diagnostisera. Den ska inte rekommendera eller välja en exit.
+
+Fas 1D.2 – Lås Exit Lab
+Efter diagnostiken registrerar vi ett litet exitpaket.
+
+Troliga familjer:
+1. NO_TARGET_1555 – referens.
+2. FIXED_2R – IS-kontroll.
+3. BE_AFTER_1R – stop flyttas till entry efter en avslutad bar över +1R.
+4. R_TRAIL – trailing uttryckt i initiala R-enheter.
+5. ATR_TRAIL – ATR-baserad trailing.
+6. Högst två strukturellt motiverade time exits.
+
+ATR-trailing ska vara kausal:
+ATR beräknas på avslutade bars,
+trailing uppdateras efter barens close,
+den nya stopnivån gäller först nästa bar,
+samma bar får inte både skapa och träffa en ny stop.
+
+Ett preliminärt ATR-område kan vara:
+ATR(14) på 5-minutersbars
+Multiplikator: 2,0 / 2,5 / 3,0
+Aktivering: efter +1R
+Time exit: 15:55
+
+Vi väljer en robust parameterregion, inte den bästa enskilda multiplikatorn.
+
+as 1D.3 – Development och intern validation
+Exitvarianterna utvecklas endast på 2021–2022.
+Därefter appliceras de oförändrade på 2023.
+En kandidat bör:
+ha positiv expectancy och R-PF över 1 på 2023,
+inte bara förbättra slutbalansen genom högre tail-risk,
+förbättra den mekanism den konstruerades för,
+fungera rimligt på både long och short,
+inte vara beroende av ett fåtal trades,
+visa en parameterplatå,
+helst inte kollapsa på MES.
+
+Högst två kandidater går vidare.
+
+Fas 1D.4 – IS holdout 2024
+Kandidaterna låses innan 2024 öppnas.
+
+Efter körningen:
+väljs en slutlig exitarkitektur,
+2024 får inte användas för ytterligare justering,
+no-target behålls om ingen kandidat tydligt förbättrar robustheten.
+
+Primära mått
+Exitvalet baseras huvudsakligen på:
+expectancy i R,
+R-baserad PF,
+max drawdown i kumulativ R,
+downside deviation,
+MFE/MAE och giveback,
+long/short-stabilitet,
+årsresultat,
+vinstkoncentration,
+block-bootstrap,
+parameterrobusthet.
+
+Compounded dollarresultat och kontraktsantal redovisas men är sekundära under Exit Lab.
+
+ORB_MNQ_MES_PHASE1D1_FIXED_ENTRY_PATH_DIAGNOSTICS_V1.2
+Market: MNQ
+Entry rules lock SHA256: 571e99994e62b663b987af46b01474604e7e669fec0b7aacc4571b88da615afa
+DEVELOPMENT ONLY: 2021-07-14 through 2022-12-31 inclusive
+2023 validation analyzed: False
+2024 IS holdout analyzed: False
+2025+ OOS analyzed: False
+Purpose: fixed entry-path diagnostics; no exit candidate selection
+
+Sessions observed: 380
+Fixed entry events: 363
+Direction counts: {'LONG': 183, 'SHORT': 180}
+Audit status counts: {'VALID_ENTRY_EVENT': 363, 'SKIP_NO_1555_BAR': 11, 'NO_SIGNAL': 6}
+Reference exits: {'TIME': 192, 'STOP': 171}
+Reference no-target expectancy net R: 0.151553
+Reference no-target R-based PF: 1.305709
+Reference no-target win rate: 44.63%
+MFE raw R mean/median: 1.168769/0.885827
+MAE raw R mean/median: -0.711332/-0.917453
+Giveback raw R mean/median: 1.002824/1.044776
+Stop rate: 47.11%
+
+Threshold diagnostics (conditional final result after threshold hit):
+slice_type slice_value  threshold_r_raw  events  hits  hit_rate  ambiguous_stop_first_count  hit_then_final_loss_count  hit_then_final_loss_rate_of_hits  hit_then_final_stop_rate_of_hits  conditional_mean_final_exit_r_net  conditional_median_final_exit_r_net  conditional_r_profit_factor_net  conditional_mean_giveback_r_raw
+   OVERALL         ALL              0.5     363   233  0.641873                           0                         78                          0.334764                          0.257511                           0.722271                             0.720117                         3.574791                        -0.245410
+   OVERALL         ALL              1.0     363   167  0.460055                           0                         32                          0.191617                          0.143713                           1.186232                             1.241818                         8.622349                        -0.216314
+   OVERALL         ALL              1.5     363   109  0.300275                           0                         12                          0.110092                          0.082569                           1.696232                             1.639241                        19.238177                        -0.234926
+   OVERALL         ALL              2.0     363    69  0.190083                           0                          5                          0.072464                          0.072464                           2.146286                             2.071429                        30.618749                        -0.193067
+   OVERALL         ALL              3.0     363    27  0.074380                           0                          1                          0.037037                          0.037037                           3.115485                             3.012270                        85.118106                        -0.185199
+
+Baseline reconciliation: {'status': 'PASS', 'baseline_version': 'ORB_MNQ_MES_BASELINE_V1.0', 'reference_variant': 'NO_TARGET', 'registry_events': 363, 'baseline_executed_trades': 363, 'baseline_zero_contract_events': 0, 'all_event_ids_reconciled': True, 'executed_trade_field_matches': 363, 'max_abs_price_error': 0.0, 'max_abs_exit_r_net_error': 0.0, 'non_event_audit_statuses_match': True}
+
+Interpretation rule: diagnose first; do not choose an exit from this script alone.
+
+ORB_MNQ_MES_PHASE1D1_FIXED_ENTRY_PATH_DIAGNOSTICS_V1.2
+Market: MES
+Entry rules lock SHA256: 571e99994e62b663b987af46b01474604e7e669fec0b7aacc4571b88da615afa
+DEVELOPMENT ONLY: 2021-07-14 through 2022-12-31 inclusive
+2023 validation analyzed: False
+2024 IS holdout analyzed: False
+2025+ OOS analyzed: False
+Purpose: fixed entry-path diagnostics; no exit candidate selection
+
+Sessions observed: 380
+Fixed entry events: 359
+Direction counts: {'SHORT': 180, 'LONG': 179}
+Audit status counts: {'VALID_ENTRY_EVENT': 359, 'SKIP_NO_1555_BAR': 11, 'NO_SIGNAL': 10}
+Reference exits: {'STOP': 187, 'TIME': 172}
+Reference no-target expectancy net R: 0.148818
+Reference no-target R-based PF: 1.278072
+Reference no-target win rate: 42.90%
+MFE raw R mean/median: 1.295961/0.896226
+MAE raw R mean/median: -0.744771/-1.000000
+Giveback raw R mean/median: 1.117650/1.117241
+Stop rate: 52.09%
+
+Threshold diagnostics (conditional final result after threshold hit):
+slice_type slice_value  threshold_r_raw  events  hits  hit_rate  ambiguous_stop_first_count  hit_then_final_loss_count  hit_then_final_loss_rate_of_hits  hit_then_final_stop_rate_of_hits  conditional_mean_final_exit_r_net  conditional_median_final_exit_r_net  conditional_r_profit_factor_net  conditional_mean_giveback_r_raw
+   OVERALL         ALL              0.5     359   240  0.668524                           0                         90                          0.375000                          0.325000                           0.683045                             0.641330                         3.017571                        -0.233077
+   OVERALL         ALL              1.0     359   168  0.467967                           0                         30                          0.178571                          0.160714                           1.267265                             1.230514                         8.612033                        -0.339765
+   OVERALL         ALL              1.5     359   119  0.331476                           0                         15                          0.126050                          0.109244                           1.708132                             1.677596                        15.727122                        -0.299460
+   OVERALL         ALL              2.0     359    89  0.247911                           0                          5                          0.056180                          0.044944                           2.121329                             2.033126                        44.112567                        -0.227817
+   OVERALL         ALL              3.0     359    34  0.094708                           0                          1                          0.029412                          0.029412                           3.025003                             2.725374                       103.850110                        -0.181566
+
+Baseline reconciliation: {'status': 'PASS', 'baseline_version': 'ORB_MNQ_MES_BASELINE_V1.0', 'reference_variant': 'NO_TARGET', 'registry_events': 359, 'baseline_executed_trades': 359, 'baseline_zero_contract_events': 0, 'all_event_ids_reconciled': True, 'executed_trade_field_matches': 359, 'max_abs_price_error': 0.0, 'max_abs_exit_r_net_error': 0.0, 'non_event_audit_statuses_match': True}
+
+Interpretation rule: diagnose first; do not choose an exit from this script alone.
