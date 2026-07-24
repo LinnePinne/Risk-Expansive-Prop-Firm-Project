@@ -1308,6 +1308,7 @@ parameterrobusthet.
 
 Compounded dollarresultat och kontraktsantal redovisas men är sekundära under Exit Lab.
 
+Fas 1D.1:
 ORB_MNQ_MES_PHASE1D1_FIXED_ENTRY_PATH_DIAGNOSTICS_V1.2
 Market: MNQ
 Entry rules lock SHA256: 571e99994e62b663b987af46b01474604e7e669fec0b7aacc4571b88da615afa
@@ -1375,3 +1376,320 @@ slice_type slice_value  threshold_r_raw  events  hits  hit_rate  ambiguous_stop_
 Baseline reconciliation: {'status': 'PASS', 'baseline_version': 'ORB_MNQ_MES_BASELINE_V1.0', 'reference_variant': 'NO_TARGET', 'registry_events': 359, 'baseline_executed_trades': 359, 'baseline_zero_contract_events': 0, 'all_event_ids_reconciled': True, 'executed_trade_field_matches': 359, 'max_abs_price_error': 0.0, 'max_abs_exit_r_net_error': 0.0, 'non_event_audit_statuses_match': True}
 
 Interpretation rule: diagnose first; do not choose an exit from this script alone.
+
+Resultaten är tekniskt godkända och ger en tydlig diagnos: vi har ett reellt continuation-beteende på både MNQ och MES, men också tillräckligt många trades som lämnar tillbaka vinster för att motivera skyddande exitvarianter.
+
+Vi ska gå vidare till Exit Lab – men ännu inte låsa en slutlig exit.
+Teknisk bedömning: PASS
+
+Båda körningarna är metodiskt rena:
+Samma entry-lock: 571e9999...615afa.
+Endast Development 2021-07-14–2022-12-31 analyserades.
+2023, 2024 och 2025+ är fortfarande spärrade.
+Alla entryevent stämmer exakt mot baseline.
+Prisfel och R-fel är 0.0.
+Inga verkliga same-bar-konflikter mellan initial stop och R-trösklar förekom.
+
+Det betyder att resultaten kan användas som underlag för Fas 1D.2.
+Referensstrategin är anmärkningsvärt lik mellan marknaderna
+| Mått                     |      MNQ |      MES |
+| ------------------------ | -------: | -------: |
+| Entryevent               |      363 |      359 |
+| Expectancy               | +0,1516R | +0,1488R |
+| R-PF                     |    1,306 |    1,278 |
+| Win rate                 |  44,63 % |  42,90 % |
+| Stop rate                |  47,11 % |  52,09 % |
+| Median MFE               |  +0,886R |  +0,896R |
+| Median MAE               |  −0,917R |  −1,000R |
+| Median giveback från MFE |   1,045R |   1,117R |
+Det är positivt att expectancy, PF, tröskelfrekvenser och slututfall är så lika. Utvecklingsresultatet verkar inte vara en isolerad MNQ-anomali. Edgen är payoff-driven snarare än win-rate-driven. Härlett från expectancy,
+PF och win rate är den ungefärliga genomsnittliga vinnaren cirka:
+MNQ: +1,45R mot −0,90R per förlust.
+MES: +1,59R mot −0,94R per förlust.
+Det betyder att exitlogiken måste bevara de stora vinnarna. En aggressiv break-even eller för snäv trailing kan göra strategin sämre trots att den reducerar vissa förluster.
+
+Jag har vänt tecknet på rapportens sista kolumn så att den visar den intuitiva förändringen från träffad tröskel till slutlig exit, alltså vad som händer efter att en tröskel träffats
+| Tröskel | Hit rate MNQ/MES | Slutlig förlust efter hit MNQ/MES | Slutligt netto-R MNQ/MES | Genomsnittlig fortsatt raw-R |
+| ------- | ---------------: | --------------------------------: | -----------------------: | ---------------------------: |
+| +0,5R   |    64,2 / 66,9 % |                     33,5 / 37,5 % |          +0,722 / +0,683 |              +0,245 / +0,233 |
+| +1,0R   |    46,0 / 46,8 % |                     19,2 / 17,9 % |          +1,186 / +1,267 |              +0,216 / +0,340 |
+| +1,5R   |    30,0 / 33,1 % |                     11,0 / 12,6 % |          +1,696 / +1,708 |              +0,235 / +0,299 |
+| +2,0R   |    19,0 / 24,8 % |                       7,2 / 5,6 % |          +2,146 / +2,121 |              +0,193 / +0,228 |
+| +3,0R   |      7,4 / 9,5 % |                       3,7 / 2,9 % |          +3,115 / +3,025 |              +0,185 / +0,182 |
+Den viktigaste observationen är att den fortsatta utvecklingen efter varje tröskel är positiv på båda marknaderna. No-target-exiten lämnar alltså inte systematiskt tillbaka hela rörelsen efter att exempelvis +1R har nåtts. 
+I genomsnitt tjänar strategin ytterligare R genom att fortsätta hålla.
+Samtidigt finns ett tydligt skyddsproblem:
+168 av 473 trades som nådde +0,5R slutade ändå som förluster.
+62 av 335 trades som nådde +1R slutade som förluster.
+27 av 228 trades som nådde +1,5R slutade som förluster.
+Detta motiverar att testa break-even och trailing. Men det bevisar inte att dessa exits förbättrar strategin: en trade kan gå tillbaka till entry efter +1R och därefter fortsätta till +3R. Slutresultatet visar inte den 
+mellanliggande retracement-pathen.
+
+Viktig förklaring av giveback-kolumnerna
+Rapporten använder två olika definitioner:
+Overall giveback = MFE − slutlig raw exit
+men:
+Conditional giveback = träffad tröskel − slutlig raw exit
+Därför är conditional giveback negativ. Det betyder inte negativ giveback, utan att slutresultatet i genomsnitt hamnade över den träffade tröskeln.
+
+I nästa kodversion bör kolumnen döpas om till exempelvis:
+conditional_mean_threshold_minus_final_exit_r_raw
+eller inverteras till:
+conditional_mean_post_hit_change_r_raw
+Ingen omkörning krävs; beräkningen är korrekt, men namnet är missvisande.
+
+Vad diagnosen stödjer
+Följande exitfamiljer är fortfarande motiverade för Fas 1D.2:
+NO_TARGET_1555 som referens.
+FIXED_2R som kontroll, inte som förhandsfavorit.
+BE_AFTER_1R för att undersöka hit-then-loss-problemet.
+En fördröjd R-trailing som inte aktiveras för tidigt.
+En liten ATR-trailingfamilj.
+Högst en tidigare time exit, men bara om checkpoint-kurvan stödjer den.
+
+Däremot ger resultaten inget starkt stöd för fasta targets på +0,5R, +1R eller +1,5R. De skulle kapa en continuation-effekt som är positiv på båda marknaderna.
+FIXED_2R är mer relevant som kontroll: bara 6–7 % av trades som når +2R slutar som förluster, och den fortsatta genomsnittliga vinsten efter +2R är relativt begränsad. Men inte heller 2R ska väljas från denna tabell ensam.
+
+En viktig varningssignal
+Development-perioden är betydligt starkare än de redan kända senare resultaten:
+| Marknad | Development | Tidigare full IS | Konsumerat OOS |
+| ------- | ----------: | ---------------: | -------------: |
+| MNQ     |    +0,1516R |   cirka +0,0959R |       +0,0378R |
+| MES     |    +0,1488R |   cirka +0,0464R |       +0,0329R |
+Detta ska inte användas för att designa kandidater från 2023/2024-information, men det visar att 2021–2022 är en gynnsam utvecklingsperiod. Vi måste därför välja en enkel mekanism och kräva att den överlever 2023 oförändrad.
+
+15:55 ska behållas som enda time exit i Exit Lab.
+| Checkpoint | MES expectancy | MNQ expectancy |
+| ---------- | -------------: | -------------: |
+| 12:00      |       +0,0448R |       +0,0995R |
+| 14:00      |       +0,0369R |       +0,0874R |
+| 15:00      |       +0,0730R |       +0,0950R |
+| 15:55      |   **+0,1488R** |   **+0,1516R** |
+2021 hade vissa tidigare checkpoints marginellt bättre utfall, men vid olika tider för MES och MNQ. Effekten återkom inte 2022. Det finns alltså inget stabilt stöd för 12:00- eller 14:00-exit.
+
+Övriga viktiga resultat:
+Både long och short är positiva i båda marknaderna.
+Både 2021 och 2022 är positiva i båda marknaderna.
+Cirka 49 % av stoppen inträffar inom första timmen, men cirka 35 % inträffar efter två timmar. En tidig generell exit löser därför inte stopproblemet.
+Efter att +1R träffats slutar 17,9 % av MES-trades och 19,2 % av MNQ-trades ändå negativt. Det motiverar break-even-testet.
+Samtidigt fortsätter +1R-trades i genomsnitt ytterligare cirka +0,34R i MES och +0,22R i MNQ. En aggressiv skyddsexit kan alltså förstöra vinnare.
+Efter +2R är fortsatt utveckling fortfarande positiv. FIXED_2R bör därför vara en kontrollvariant, inte förhandsfavorit.
+Om de fem största vinnarna tas bort förblir expectancy positiv: cirka +0,065R MES och +0,078R MNQ. Edgen är tailberoende men inte beroende av enstaka extrema trades.
+De sena signalgrupperna är för små och inkonsekventa för att motivera förändring av entryfönstret.
+
+Rekommenderat låst Fas 1D.2-paket
+Alla varianter använder samma entries, samma regler på MES/MNQ och time exit 15:55:
+
+NO_TARGET_1555 – referens.
+FIXED_2R_1555 – kontroll.
+BE_AFTER_1R_CLOSE – aktivering efter en avslutad minutbar som stänger på eller över +1R; stop till entry fill från nästa bar.
+R_TRAIL_AFTER_1R_CLOSE – trailavstånd 1,0R / 1,5R / 2,0R.
+ATR5M14_TRAIL_AFTER_1R_CLOSE – multiplikator 2,0 / 2,5 / 3,0.
+
+För trailing gäller:
+
+Stoppen beräknas först efter avslutad bar.
+Den uppdaterade stoppen gäller från nästa minutbar.
+Stoppen får aldrig flyttas bakåt.
+Gap genom stop behandlas enligt baseline.
+Ingen bar får både skapa och träffa en ny stop.
+Inga kombinationer mellan fixed target, break-even och trailing.
+Ingen marknadsspecifik parameteroptimering.
+
+Det ger nio begränsade och teoretiskt motiverade varianter. De körs först på Development 2021–2022. Därefter väljs högst två verkliga exitkandidater, utöver benchmark, och låses innan 2023 öppnas. År 2024 ska fortfarande förbli 
+helt orört.
+
+Fas 1D.2 bör vara ett helt låst, Development-only Exit Lab. Vi testar nio förregistrerade exitvarianter på exakt samma 722 entryevent och väljer högst två kandidater som får gå vidare till 2023. Ingen slutlig exit väljs ännu.
+
+1. Datagränser
+| Period                | Användning                         |
+| --------------------- | ---------------------------------- |
+| 2021-07-14–2022-12-31 | Fas 1D.2 Development               |
+| 2023                  | Spärrad intern validation          |
+| 2024                  | Spärrad IS-holdout                 |
+| 2025–2026             | Konsumerat OOS – får inte användas |
+Koden ska hårdstoppa om någon rad från 2023 eller senare når analysen.
+Entryreglerna låses med befintligt SHA-256:
+571e99994e62b663b987af46b01474604e7e669fec0b7aacc4571b88da615afa
+Förväntade events:
+MNQ: 363
+MES: 359
+Totalt: 722
+
+2. Låst testmatris
+Alla varianter använder ursprunglig OR-stop och time exit vid 15:55.
+| Exitfamilj   | Variant                       |
+| ------------ | ----------------------------- |
+| Benchmark    | `NO_TARGET_1555`              |
+| Kontroll     | `FIXED_2R_1555`               |
+| Break-even   | `BE_AFTER_1R_CLOSE`           |
+| R-trailing   | `R_TRAIL_1.0R_AFTER_1R_CLOSE` |
+|              | `R_TRAIL_1.5R_AFTER_1R_CLOSE` |
+|              | `R_TRAIL_2.0R_AFTER_1R_CLOSE` |
+| ATR-trailing | `ATR5M14_2.0_AFTER_1R_CLOSE`  |
+|              | `ATR5M14_2.5_AFTER_1R_CLOSE`  |
+|              | `ATR5M14_3.0_AFTER_1R_CLOSE`  |
+Det blir nio varianter. Vi lägger inte till:
+tidigare time exits,
+targets under 2R,
+kombinationer av target, break-even och trailing,
+marknadsspecifika inställningar,
+entry- eller regimfilter.
+
+Sådana tester hör senare till Fas 1F, inte Exit Lab.
+
+3. Gemensamma executionregler
+Raw initial R definieras som: Rpoints = EntryFill − InitialStopTrigger
+Aktiveringsnivån +1R beräknas från entry_fill, inte signalpriset.
+
+Prioritetsordning per minutbar
+Vid 15:55 sker time exit på barens open.
+Gap genom redan aktiv stop hanteras på barens open.
+Befintlig stop och eventuell fixed target kontrolleras intrabar.
+Om stop och target träffas på samma tvetydiga bar: stop först.
+Endast om positionen överlever får barens close aktivera eller uppdatera en dynamisk stop.
+Den nya stoppen gäller först från nästa minutbar.
+
+En bar får alltså aldrig både skapa och träffa en ny stop.
+
+Kostnader
+Samma antaganden som baseline:
+Entry slippage: 1 tick
+Stop slippage: 1 tick
+Target slippage: 0 ticks
+Time-exit slippage: 1 tick
+Commission: $2.00 round turn per contract
+
+Break-even betyder stop vid entry_fill, inte ekonomisk break-even. Efter stopslippage och commission blir utfallet därför svagt negativt i net R.
+
+4. Exakta exitdefinitioner
+NO_TARGET_1555
+Oförändrad referens:
+Initial OR-stop eller 15:55-open
+Den ska reconcila exakt mot Fas 1D.1 med noll pris- och R-avvikelse.
+
+FIXED_2R_1555
+Target:
+Target = EntryFill ± 2Rpoints
+	​Target är aktiv från entrybaren. Den ska reconcila exakt mot Fas 1B:s TARGET_2R.
+
+BE_AFTER_1R_CLOSE
+Break-even aktiveras först när en avslutad minutbar stänger på eller bortom +1R:
+Long: close >= entry_fill + 1R
+Short: close <= entry_fill - 1R
+Stoppen flyttas till entry_fill och gäller från nästa minutbar. En intrabar-touch av +1R utan close räcker inte.
+
+R-trailing
+Aktivering sker enligt samma +1R-close-regel.
+Efter aktivering:
+Long stop  = högsta high sedan entry − trail_distance × initial R
+Short stop = lägsta low sedan entry + trail_distance × initial R
+Stoppen:
+uppdateras efter varje avslutad minutbar,
+gäller från nästa bar,
+får aldrig flyttas bakåt,
+får aldrig vara sämre än den ursprungliga stoppen.
+
+ATR-trailing
+Detta blir en kausal Chandelier-liknande stop:
+Long stop  = highest high since entry − multiplier × ATR(14)
+Short stop = lowest low since entry + multiplier × ATR(14)
+ATR-definitionen låses till:
+5-minutersbars i America/New_York,
+Wilder ATR(14),
+true range inklusive gap från föregående 5-minutersclose,
+kontinuerliga futuresbars före och under cash-sessionen,
+endast fullständigt avslutade 5-minutersbars,
+ingen information från den pågående 5-minutersbaren.
+
+Exempel: baren 09:45–09:49 blir tillgänglig efter 09:49 och kan påverka stoppen tidigast vid 09:50-open.
+Om ATR saknas vid aktivering ska traden inte tas bort. Händelsen flaggas, och varianten får inte bli kandidat om det förekommer verkliga ATR-databrister.
+
+5. Primär analys
+Exitvalet görs på normaliserad net R. Dollarcompounding och kontraktsantal rapporteras endast sekundärt.
+Per variant mäter vi:
+expectancy och median i net R,
+R-baserad profit factor,
+kumulativ max drawdown i R,
+daglig downside deviation och korrigerad Sortino,
+win rate och genomsnittlig vinnare/förlorare,
+exitfördelning,
+holding time,
+expectancy per MNQ/MES,
+long/short,
+2021/2022,
+signaltidsgrupp,
+resultat utan de 1, 5, 10 och 25 största vinnarna.
+Den gemensamma familjemätningen ska väga MNQ och MES lika, inte bara slå ihop trades, även om tradeantalen råkar vara nästan identiska.
+
+6. Paired jämförelse mot benchmark
+Eftersom alla varianter har samma entries beräknar vi för varje event: ΔR = Rcandidate − Rno-target
+Det visar direkt vad exitförändringen faktiskt tillför.
+Vi kör 20 000 circular block-bootstrap-simuleringar med 20 gemensamma handelsdatum per block. MNQ och MES resamplas på samma datum så att deras verkliga korrelation bevaras. Rapporten ska visa:
+medel och median för paired ΔR,
+95-procentigt intervall,
+sannolikheten att Δ expectancy är positiv,
+andel trades kandidaten förbättrar respektive försämrar,
+total R som räddas från förluster,
+total R som förloras genom för tidiga exits.
+
+7. Mekanismdiagnostik
+Varje familj måste förbättra det problem den är konstruerad för.
+
+Break-even
+Vi mäter:
+hur ofta +1R-close aktiveras,
+hur många senare förluster som undviks,
+hur många framtida vinnare som stoppas vid entry,
+räddad R mot bortkapad R.
+
+Trailing
+Vi mäter:
+aktiveringsfrekvens,
+andel exits via dynamisk stop,
+reduktion av giveback,
+hur mycket av MFE som fångas,
+hur många +2R- och +3R-vinnare som kapas,
+förändring i vänstersvans och drawdown.
+
+Fixed 2R
+Vi mäter:
+undviket giveback efter +2R,
+continuation som går förlorad över +2R,
+paired resultat mot no-target.
+
+8. Kandidatregler
+NO_TARGET_1555 följer alltid med som benchmark. Högst två andra varianter får gå vidare till 2023.
+En kandidat måste:
+ha positiv expectancy och R-PF över 1 på både MNQ och MES,
+förbli positiv både 2021 och 2022,
+inte vara beroende av de fem största vinnarna,
+fungera på både long och short,
+förbättra expectancy eller tydligt förbättra både drawdown och downside deviation,
+behålla minst 80 % av benchmark-expectancyn på varje marknad,
+visa den avsedda mekaniska förbättringen,
+inte vara den enda fungerande punkten i en parameterfamilj.
+
+För R- och ATR-trailing måste minst två närliggande inställningar ge liknande resultat. Om en robust platå finns väljer vi normalt mittpunkten, exempelvis 1,5R eller 2,5 ATR — inte den enskilt 
+bästa backtestpunkten. Vi väljer högst en representant per trailingfamilj. Om ingen kandidat klart förbättrar robustheten går endast no-target vidare.
+
+9. Leveranser från kodversionen
+Nästa program bör heta:
+ORB_MNQ_MES_phase1D2_development_exit_lab.py
+
+Det bör exportera åtminstone:
+preregistration.json
+entry_reconciliation.json
+variant_summary.csv
+variant_trade_results.csv
+paired_vs_no_target.csv
+mechanism_diagnostics.csv
+parameter_plateau.csv
+market_year_direction_results.csv
+daily_equal_market_r.csv
+paired_block_bootstrap.csv
+exit_update_audit.csv.gz
+copy_paste_report.txt
+
+Programmet ska även skapa ett nytt SHA-256-lås över hela exitmatrisen och executionreglerna.
+När Fas 1D.2 är körd väljer vi högst två kandidater och låser dem. Först därefter öppnas 2023 i nästa fas. 2024 förblir orört tills kandidaterna har bedömts på 2023.
